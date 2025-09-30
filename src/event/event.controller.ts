@@ -1,4 +1,17 @@
-import { Controller, Post, Put, Delete, Patch, Get, Param, Body, Req, UseGuards, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Put,
+  Delete,
+  Patch,
+  Get,
+  Param,
+  Body,
+  Req,
+  UseGuards,
+  UploadedFiles,
+  UseInterceptors,
+} from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { uploadImagesToSupabase } from './supabase-upload.util';
 import { EventService } from './event.service';
@@ -6,7 +19,6 @@ import { UserService } from '../user/user.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { EventStatus } from './event.entity';
 
 @Controller('events')
 export class EventController {
@@ -21,19 +33,22 @@ export class EventController {
   @Post()
   @UseInterceptors(FilesInterceptor('images'))
   async create(
-    @Body() body,
-    @Req() req,
+    @Body() body: any,
+    @Req() req: any,
     @UploadedFiles() files: Express.Multer.File[],
   ) {
     let imageUrls: string[] = [];
     if (files && files.length > 0) {
       imageUrls = await uploadImagesToSupabase(files);
-    } else if (body.images && Array.isArray(body.images)) {
+    } else if (Array.isArray(body?.images)) {
       // Accept base64 images from frontend
-      imageUrls = await uploadImagesToSupabase(body.images);
+      imageUrls = await uploadImagesToSupabase(body.images as string[]);
     }
-    // Fetch the full user entity to ensure organizerId is set
-    const userId = req.user.id || req.user.userId;
+    // Use JWT 'sub' field as user id
+    const userId: number = typeof req.user.sub === 'string' ? parseInt(req.user.sub, 10) : Number(req.user.sub);
+    if (isNaN(userId)) {
+      throw new Error('Invalid user id in request');
+    }
     const organizer = await this.userService.findById(userId);
     return this.eventService.createEvent({ ...body, images: imageUrls }, organizer);
   }
