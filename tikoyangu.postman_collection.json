@@ -1,0 +1,378 @@
+{
+  "info": {
+    "_postman_id": "tikoyangu-auth-user-api",
+    "name": "Tikoyangu Auth & User API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Register Event Organizer",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"organizer1@example.com\",\n  \"password\": \"password123\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/auth/register",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["auth", "register"]
+        }
+      }
+    },
+    {
+      "name": "Login (Event Organizer)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"organizer1@example.com\",\n  \"password\": \"password123\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/auth/login",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["auth", "login"]
+        }
+      }
+    },
+    {
+      "name": "Get My Profile (Event Organizer)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/users/me",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["users", "me"]
+        }
+      }
+    },
+    {
+      "name": "List All Users (Admin Only)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/users",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["users"]
+        }
+      }
+    },
+    {
+      "name": "Delete User (Admin Only)",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/users/2",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["users", "2"]
+        }
+      }
+    },
+    {
+      "name": "Forgot Password",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"organizer1@example.com\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/auth/forgot-password",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["auth", "forgot-password"]
+        }
+      }
+    },
+    {
+      "name": "Reset Password",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"token\": \"{{reset_token}}\",\n  \"newPassword\": \"newpassword123\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/auth/reset-password",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["auth", "reset-password"]
+        }
+      }
+    },
+    {
+      "name": "Change Password (Authenticated)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"oldPassword\": \"password123\",\n  \"newPassword\": \"newpassword123\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/auth/change-password",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["auth", "change-password"]
+        }
+      }
+    }
+    ,
+    {
+      "name": "Create Event",
+      "request": {
+        "description": "**Example Response:**\n```json\n{\n  \"id\": 1,\n  \"title\": \"Sample Event\",\n  ...existing fields...,\n  \"organizer\": {\n    \"id\": 5,\n    \"role\": \"event_organizer\"\n  }\n}\n```",
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "title", "value": "Sample Event", "type": "text" },
+            { "key": "description", "value": "Event description", "type": "text" },
+            { "key": "venue", "value": "Main Hall", "type": "text" },
+            { "key": "location", "value": "Nairobi", "type": "text" },
+            { "key": "startDate", "value": "2025-10-01", "type": "text" },
+            { "key": "endDate", "value": "2025-10-01", "type": "text" },
+            { "key": "startTime", "value": "18:00:00", "type": "text" },
+            { "key": "endTime", "value": "21:00:00", "type": "text" },
+            { "key": "images", "type": "file", "src": ["/path/to/image1.jpg", "/path/to/image2.jpg"] }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:3000/events",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["events"]
+        }
+      }
+    },
+    {
+      "name": "Get Event by ID",
+      "request": {
+        "description": "**Example Response:**\n```json\n{\n  \"id\": 1,\n  ...existing fields...,\n  \"organizer\": {\n    \"id\": 5,\n    \"role\": \"event_organizer\"\n  }\n}\n```",
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/events/1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["events", "1"]
+        }
+      }
+    },
+    {
+      "name": "Update Event",
+      "request": {
+        "description": "**Example Response:**\n```json\n{\n  \"id\": 1,\n  ...existing fields...,\n  \"organizer\": {\n    \"id\": 5,\n    \"role\": \"event_organizer\"\n  }\n}\n```",
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "title", "value": "Updated Event", "type": "text" },
+            { "key": "description", "value": "Updated description", "type": "text" },
+            { "key": "venue", "value": "Main Hall", "type": "text" },
+            { "key": "location", "value": "Nairobi", "type": "text" },
+            { "key": "startDate", "value": "2025-10-01", "type": "text" },
+            { "key": "endDate", "value": "2025-10-01", "type": "text" },
+            { "key": "startTime", "value": "18:00:00", "type": "text" },
+            { "key": "endTime", "value": "21:00:00", "type": "text" },
+            { "key": "images", "type": "file", "src": ["/path/to/image1.jpg", "/path/to/image2.jpg"] }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:3000/events/1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["events", "1"]
+        }
+      }
+    },
+    {
+      "name": "Delete Event",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/events/1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["events", "1"]
+        }
+      }
+    },
+    {
+      "name": "Archive Event",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/events/1/archive",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["events", "1", "archive"]
+        }
+      }
+    },
+    {
+      "name": "List All Events",
+      "request": {
+        "description": "**Example Response:**\n```json\n[\n  {\n    \"id\": 1,\n    ...existing fields...,\n    \"organizer\": {\n      \"id\": 5,\n      \"role\": \"event_organizer\"\n    }\n  },\n  ...\n]\n```",
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/events",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["events"]
+        }
+      }
+    }
+    ,
+    {
+      "name": "Purchase Ticket",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"event\": 1,\n  \"ticketType\": \"VIP\",\n  \"price\": 100.00\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/tickets/purchase",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["tickets", "purchase"]
+        }
+      }
+    },
+    {
+      "name": "Get Ticket by ID",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/tickets/1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["tickets", "1"]
+        }
+      }
+    },
+    {
+      "name": "List Tickets for Event",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/tickets/event/1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["tickets", "event", "1"]
+        }
+      }
+    },
+    {
+      "name": "Cancel Ticket",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/tickets/1/cancel",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["tickets", "1", "cancel"]
+        }
+      }
+    },
+    {
+      "name": "Use Ticket",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/tickets/1/use",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["tickets", "1", "use"]
+        }
+      }
+    }
+  ],
+  "variable": [
+    { "key": "access_token", "value": "" },
+    { "key": "admin_token", "value": "" },
+    { "key": "reset_token", "value": "" }
+  ]
+}
