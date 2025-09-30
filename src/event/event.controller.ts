@@ -2,6 +2,7 @@ import { Controller, Post, Put, Delete, Patch, Get, Param, Body, Req, UseGuards,
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { uploadImagesToSupabase } from './supabase-upload.util';
 import { EventService } from './event.service';
+import { UserService } from '../user/user.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -9,7 +10,10 @@ import { EventStatus } from './event.entity';
 
 @Controller('events')
 export class EventController {
-  constructor(private readonly eventService: EventService) {}
+  constructor(
+    private readonly eventService: EventService,
+    private readonly userService: UserService,
+  ) {}
 
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -28,7 +32,10 @@ export class EventController {
       // Accept base64 images from frontend
       imageUrls = await uploadImagesToSupabase(body.images);
     }
-    return this.eventService.createEvent({ ...body, images: imageUrls }, req.user);
+    // Fetch the full user entity to ensure organizerId is set
+    const userId = req.user.id || req.user.userId;
+    const organizer = await this.userService.findById(userId);
+    return this.eventService.createEvent({ ...body, images: imageUrls }, organizer);
   }
 
 
