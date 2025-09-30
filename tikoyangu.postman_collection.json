@@ -253,7 +253,7 @@
     {
       "name": "Archive Event",
       "request": {
-        "method": "POST",
+        "method": "PATCH",
         "header": [
           { "key": "Authorization", "value": "Bearer {{access_token}}" }
         ],
