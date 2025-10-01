@@ -9,11 +9,15 @@ export class SmsService {
   constructor() {
     this.client = twilio(
       process.env.TWILIO_ACCOUNT_SID,
-      process.env.TWILIO_AUTH_TOKEN
+      process.env.TWILIO_AUTH_TOKEN,
     );
   }
 
-  async sendTicketConfirmation(to: string, eventName: string, ticketId: number) {
+  async sendTicketConfirmation(
+    to: string,
+    eventName: string,
+    ticketId: number,
+  ) {
     try {
       await this.client.messages.create({
         body: `Your ticket for ${eventName} (ID: ${ticketId}) is confirmed!`,

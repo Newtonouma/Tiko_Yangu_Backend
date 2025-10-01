@@ -1,5 +1,8 @@
-
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, UserRole } from './user.entity';
@@ -17,7 +20,9 @@ export class UserService {
   }
 
   async findByResetToken(token: string): Promise<User | undefined> {
-    const user = await this.userRepository.findOne({ where: { resetPasswordToken: token } });
+    const user = await this.userRepository.findOne({
+      where: { resetPasswordToken: token },
+    });
     return user === null ? undefined : user;
   }
 
@@ -31,12 +36,10 @@ export class UserService {
     return user;
   }
 
-
   async findByEmail(email: string): Promise<User | undefined> {
     const user = await this.userRepository.findOne({ where: { email } });
     return user === null ? undefined : user;
   }
-
 
   async createEventOrganizer(data: Partial<User>): Promise<User> {
     if (!data.password) throw new Error('Password is required');
@@ -48,7 +51,6 @@ export class UserService {
     });
     return await this.userRepository.save(user);
   }
-
 
   async createAdmin(data: Partial<User>): Promise<User> {
     if (!data.password) throw new Error('Password is required');

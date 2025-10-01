@@ -30,11 +30,20 @@ export class EventController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('event_organizer')
   @Get('organizer/:organizerId')
-  async listEventsByOrganizer(@Param('organizerId') organizerId: number, @Req() req: any) {
-    const userId: number = typeof req.user.sub === 'string' ? parseInt(req.user.sub, 10) : Number(req.user.sub);
+  async listEventsByOrganizer(
+    @Param('organizerId') organizerId: number,
+    @Req() req: any,
+  ) {
+    const userId: number =
+      typeof req.user.sub === 'string'
+        ? parseInt(req.user.sub, 10)
+        : Number(req.user.sub);
     if (isNaN(userId)) throw new Error('Invalid user id in request');
     if (userId !== Number(organizerId)) {
-      return { statusCode: 403, message: 'Forbidden: You can only view your own events.' };
+      return {
+        statusCode: 403,
+        message: 'Forbidden: You can only view your own events.',
+      };
     }
     return this.eventService.listEventsByOrganizer(userId);
   }
@@ -47,10 +56,16 @@ export class EventController {
     @Param('eventId') eventId: number,
     @Req() req: any,
   ) {
-    const userId: number = typeof req.user.sub === 'string' ? parseInt(req.user.sub, 10) : Number(req.user.sub);
+    const userId: number =
+      typeof req.user.sub === 'string'
+        ? parseInt(req.user.sub, 10)
+        : Number(req.user.sub);
     if (isNaN(userId)) throw new Error('Invalid user id in request');
     if (userId !== Number(organizerId)) {
-      return { statusCode: 403, message: 'Forbidden: You can only view your own events.' };
+      return {
+        statusCode: 403,
+        message: 'Forbidden: You can only view your own events.',
+      };
     }
     return this.eventService.getEventByOrganizer(userId, eventId);
   }
@@ -59,28 +74,38 @@ export class EventController {
   @Roles('event_organizer')
   @Get('my')
   async listMyActive(@Req() req: any) {
-    const userId: number = typeof req.user.sub === 'string' ? parseInt(req.user.sub, 10) : Number(req.user.sub);
+    const userId: number =
+      typeof req.user.sub === 'string'
+        ? parseInt(req.user.sub, 10)
+        : Number(req.user.sub);
     if (isNaN(userId)) {
       throw new Error('Invalid user id in request');
     }
     const user = await this.userService.findById(userId);
-  // Filter active events for this organizer
-  const allActive = await this.eventService.listActiveEvents();
-  return allActive.filter(event => event.organizer && event.organizer.id === user.id);
+    // Filter active events for this organizer
+    const allActive = await this.eventService.listActiveEvents();
+    return allActive.filter(
+      (event) => event.organizer && event.organizer.id === user.id,
+    );
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('event_organizer')
   @Get('my-archived')
   async listMyArchived(@Req() req: any) {
-    const userId: number = typeof req.user.sub === 'string' ? parseInt(req.user.sub, 10) : Number(req.user.sub);
+    const userId: number =
+      typeof req.user.sub === 'string'
+        ? parseInt(req.user.sub, 10)
+        : Number(req.user.sub);
     if (isNaN(userId)) {
       throw new Error('Invalid user id in request');
     }
     const user = await this.userService.findById(userId);
-  // Filter archived events for this organizer
-  const allArchived = await this.eventService.listArchivedEvents();
-  return allArchived.filter(event => event.organizer && event.organizer.id === user.id);
+    // Filter archived events for this organizer
+    const allArchived = await this.eventService.listArchivedEvents();
+    return allArchived.filter(
+      (event) => event.organizer && event.organizer.id === user.id,
+    );
   }
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'event_organizer')
@@ -99,14 +124,19 @@ export class EventController {
       imageUrls = await uploadImagesToSupabase(body.images as string[]);
     }
     // Use JWT 'sub' field as user id
-    const userId: number = typeof req.user.sub === 'string' ? parseInt(req.user.sub, 10) : Number(req.user.sub);
+    const userId: number =
+      typeof req.user.sub === 'string'
+        ? parseInt(req.user.sub, 10)
+        : Number(req.user.sub);
     if (isNaN(userId)) {
       throw new Error('Invalid user id in request');
     }
     const organizer = await this.userService.findById(userId);
-    return this.eventService.createEvent({ ...body, images: imageUrls }, organizer);
+    return this.eventService.createEvent(
+      { ...body, images: imageUrls },
+      organizer,
+    );
   }
-
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'event_organizer')
@@ -125,12 +155,19 @@ export class EventController {
       imageUrls = await uploadImagesToSupabase(body.images as string[]);
     }
     // Use JWT 'sub' field as user id
-    const userId: number = typeof req.user.sub === 'string' ? parseInt(req.user.sub, 10) : Number(req.user.sub);
+    const userId: number =
+      typeof req.user.sub === 'string'
+        ? parseInt(req.user.sub, 10)
+        : Number(req.user.sub);
     if (isNaN(userId)) {
       throw new Error('Invalid user id in request');
     }
     const user = await this.userService.findById(userId);
-    return this.eventService.updateEvent(id, { ...body, images: imageUrls }, user);
+    return this.eventService.updateEvent(
+      id,
+      { ...body, images: imageUrls },
+      user,
+    );
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -138,7 +175,10 @@ export class EventController {
   @Delete(':id')
   async softDelete(@Param('id') id: number, @Req() req: any) {
     // Use JWT 'sub' field as user id
-    const userId: number = typeof req.user.sub === 'string' ? parseInt(req.user.sub, 10) : Number(req.user.sub);
+    const userId: number =
+      typeof req.user.sub === 'string'
+        ? parseInt(req.user.sub, 10)
+        : Number(req.user.sub);
     if (isNaN(userId)) {
       throw new Error('Invalid user id in request');
     }
@@ -151,7 +191,10 @@ export class EventController {
   @Patch(':id/archive')
   async archive(@Param('id') id: number, @Req() req: any) {
     // Use JWT 'sub' field as user id
-    const userId: number = typeof req.user.sub === 'string' ? parseInt(req.user.sub, 10) : Number(req.user.sub);
+    const userId: number =
+      typeof req.user.sub === 'string'
+        ? parseInt(req.user.sub, 10)
+        : Number(req.user.sub);
     if (isNaN(userId)) {
       throw new Error('Invalid user id in request');
     }

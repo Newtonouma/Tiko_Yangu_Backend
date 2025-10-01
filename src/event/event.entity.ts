@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  CreateDateColumn,
+  UpdateDateColumn,
+  JoinColumn,
+} from 'typeorm';
 import { User } from '../user/user.entity';
 
 export enum EventStatus {
@@ -17,7 +25,6 @@ export class Event {
 
   @Column('text')
   description: string;
-
 
   @Column('text', { array: true, nullable: true })
   images: string[];
@@ -42,6 +49,26 @@ export class Event {
 
   @Column({ type: 'time' })
   endTime: string;
+
+  // Ticket Types with different prices
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  earlybirdPrice: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  regularPrice: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  vipPrice: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  vvipPrice: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  atTheGatePrice: number;
+
+  // Keep ticketPrice for backward compatibility (will use regularPrice)
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  ticketPrice: number;
 
   @ManyToOne(() => User, (user) => user.id, { nullable: false, eager: false })
   @JoinColumn({ name: 'organizerId' })

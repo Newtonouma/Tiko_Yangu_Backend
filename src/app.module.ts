@@ -1,5 +1,3 @@
-
-
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
@@ -23,10 +21,10 @@ import { TicketModule } from './ticket/ticket.module';
       autoLoadEntities: true,
       synchronize: true, // Set to false in production
     }),
-  UserModule,
-  AuthModule,
-  EventModule,
-  TicketModule,
+    UserModule,
+    AuthModule,
+    EventModule,
+    TicketModule,
   ],
   controllers: [AppController],
   providers: [AppService],

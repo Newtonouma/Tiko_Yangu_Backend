@@ -1,6 +1,9 @@
 import { getSupabaseClient } from '../supabase.client';
 
-export async function uploadImagesToSupabase(files: Express.Multer.File[] | string[], folder = 'events'): Promise<string[]> {
+export async function uploadImagesToSupabase(
+  files: Express.Multer.File[] | string[],
+  folder = 'events',
+): Promise<string[]> {
   const bucket = process.env.SUPABASE_BUCKET;
   if (!bucket) throw new Error('SUPABASE_BUCKET not set');
   const urls: string[] = [];
@@ -18,12 +21,16 @@ export async function uploadImagesToSupabase(files: Express.Multer.File[] | stri
       fileBuffer = file.buffer;
       fileName = `${folder}/${Date.now()}-${file.originalname}`;
     }
-    const { data, error } = await supabase.storage.from(bucket).upload(fileName, fileBuffer, {
-      contentType: 'image/jpeg',
-      upsert: true,
-    });
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(fileName, fileBuffer, {
+        contentType: 'image/jpeg',
+        upsert: true,
+      });
     if (error) throw error;
-    const { data: publicUrl } = supabase.storage.from(bucket).getPublicUrl(fileName);
+    const { data: publicUrl } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(fileName);
     urls.push(publicUrl.publicUrl);
   }
   return urls;

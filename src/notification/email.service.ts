@@ -16,7 +16,11 @@ export class EmailService {
     });
   }
 
-  async sendTicketConfirmation(to: string, eventName: string, ticketId: number) {
+  async sendTicketConfirmation(
+    to: string,
+    eventName: string,
+    ticketId: number,
+  ) {
     try {
       await this.transporter.sendMail({
         from: process.env.EMAIL_USER,

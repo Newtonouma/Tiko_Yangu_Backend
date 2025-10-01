@@ -9,7 +9,12 @@ import { AuthModule } from '../auth/auth.module';
 import { MpesaModule } from '../mpesa/mpesa.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Ticket, Event]), NotificationModule, AuthModule, MpesaModule],
+  imports: [
+    TypeOrmModule.forFeature([Ticket, Event]),
+    NotificationModule,
+    AuthModule,
+    MpesaModule,
+  ],
   providers: [TicketService],
   controllers: [TicketController],
   exports: [TicketService],

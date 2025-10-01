@@ -26,9 +26,10 @@ export class TicketService {
   ) {}
 
   async purchaseTicket(data: Partial<Ticket>): Promise<any> {
-    const eventId = typeof data.event === 'number'
-      ? data.event
-      : (data.event as any)?.id ?? undefined;
+    const eventId =
+      typeof data.event === 'number'
+        ? data.event
+        : ((data.event as any)?.id ?? undefined);
     if (!eventId) {
       throw new BadRequestException('Missing event id');
     }
@@ -40,9 +41,12 @@ export class TicketService {
     }
     // Initiate Mpesa payment
     if (!data.buyerPhone || !data.buyerName) {
-      throw new BadRequestException('buyerPhone and buyerName are required for payment');
+      throw new BadRequestException(
+        'buyerPhone and buyerName are required for payment',
+      );
     }
-    const price = typeof data.price === 'number' ? data.price : Number(data.price);
+    const price =
+      typeof data.price === 'number' ? data.price : Number(data.price);
     if (isNaN(price)) {
       throw new BadRequestException('price is required and must be a number');
     }
@@ -69,32 +73,47 @@ export class TicketService {
   }
 
   async getTicket(id: number): Promise<Ticket> {
-    const ticket = await this.ticketRepository.findOne({ where: { id }, relations: ['event'] });
+    const ticket = await this.ticketRepository.findOne({
+      where: { id },
+      relations: ['event'],
+    });
     if (!ticket) throw new NotFoundException('Ticket not found');
     return ticket;
   }
 
   async listTicketsForEvent(eventId: number, user): Promise<Ticket[]> {
-  const event = await this.eventRepository.findOne({ where: { id: eventId }, relations: ['organizer'] });
-  if (!event) throw new NotFoundException('Event not found');
-  if (user.role !== 'admin' && event.organizer.id !== user.id) throw new ForbiddenException('Not allowed');
-  return this.ticketRepository.find({ where: { event: { id: eventId } } });
+    const event = await this.eventRepository.findOne({
+      where: { id: eventId },
+      relations: ['organizer'],
+    });
+    if (!event) throw new NotFoundException('Event not found');
+    if (user.role !== 'admin' && event.organizer.id !== user.id)
+      throw new ForbiddenException('Not allowed');
+    return this.ticketRepository.find({ where: { event: { id: eventId } } });
   }
 
   async cancelTicket(id: number, user): Promise<Ticket> {
-    const ticket = await this.ticketRepository.findOne({ where: { id }, relations: ['event'] });
+    const ticket = await this.ticketRepository.findOne({
+      where: { id },
+      relations: ['event'],
+    });
     if (!ticket) throw new NotFoundException('Ticket not found');
     // Only admin or event organizer for the event can cancel
-    if (user.role !== 'admin' && ticket.event.organizer.id !== user.id) throw new ForbiddenException('Not allowed');
+    if (user.role !== 'admin' && ticket.event.organizer.id !== user.id)
+      throw new ForbiddenException('Not allowed');
     ticket.status = TicketStatus.CANCELED;
     return this.ticketRepository.save(ticket);
   }
 
   async useTicket(id: number, user): Promise<Ticket> {
-    const ticket = await this.ticketRepository.findOne({ where: { id }, relations: ['event'] });
+    const ticket = await this.ticketRepository.findOne({
+      where: { id },
+      relations: ['event'],
+    });
     if (!ticket) throw new NotFoundException('Ticket not found');
     // Only admin or event organizer for the event can mark as used
-    if (user.role !== 'admin' && ticket.event.organizer.id !== user.id) throw new ForbiddenException('Not allowed');
+    if (user.role !== 'admin' && ticket.event.organizer.id !== user.id)
+      throw new ForbiddenException('Not allowed');
     ticket.status = TicketStatus.USED;
     return this.ticketRepository.save(ticket);
   }

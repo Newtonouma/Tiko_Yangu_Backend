@@ -28,6 +28,7 @@ export class TicketController {
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard)
   async getTicket(@Param('id') id: number, @Request() req) {
     const ticket = await this.ticketService.getTicket(id);
     if (ticket.buyerEmail !== req.user.email && req.user.role !== 'admin') {
@@ -37,18 +38,21 @@ export class TicketController {
   }
 
   @Get('event/:eventId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'organizer')
   async listTicketsForEvent(@Param('eventId') eventId: number, @Request() req) {
     return this.ticketService.listTicketsForEvent(eventId, req.user);
   }
 
   @Post(':id/cancel')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'organizer')
   async cancel(@Param('id') id: number, @Request() req) {
     return this.ticketService.cancelTicket(id, req.user);
   }
 
   @Post(':id/use')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'organizer')
   async use(@Param('id') id: number, @Request() req) {
     return this.ticketService.useTicket(id, req.user);
