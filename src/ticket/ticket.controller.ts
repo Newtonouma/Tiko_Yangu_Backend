@@ -17,21 +17,14 @@ import { Roles } from '../auth/roles.decorator';
 import { Ticket } from './ticket.entity';
 
 @Controller('tickets')
-@UseGuards(JwtAuthGuard, RolesGuard)
 export class TicketController {
   constructor(private readonly ticketService: TicketService) {}
 
   @Post('purchase')
-  @Roles('user', 'admin')
-  async purchase(@Body() data: Partial<Ticket>, @Request() req) {
-    // Only users can purchase tickets
-    // Optionally, you can set buyerName, buyerEmail, buyerPhone from req.user if needed
-    return this.ticketService.purchaseTicket({
-      ...data,
-      buyerName: req.user.name,
-      buyerEmail: req.user.email,
-      buyerPhone: req.user.phone,
-    });
+  async purchase(@Body() data: Partial<Ticket>) {
+    // Allow anyone to purchase tickets (unauthenticated)
+    // buyerName, buyerEmail, buyerPhone must be provided in the request body
+    return this.ticketService.purchaseTicket(data);
   }
 
   @Get(':id')

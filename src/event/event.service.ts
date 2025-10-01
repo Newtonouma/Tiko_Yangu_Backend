@@ -11,6 +11,31 @@ export class EventService {
     private readonly eventRepository: Repository<Event>,
   ) {}
 
+  async listEventsByOrganizer(organizerId: number): Promise<any[]> {
+    const events = await this.eventRepository.find({
+      where: { organizer: { id: organizerId } },
+      relations: ['organizer'],
+    });
+    return events.map(event => ({
+      ...event,
+      images: event.images || [],
+      organizer: event.organizer ? { id: event.organizer.id, role: event.organizer.role } : null,
+    }));
+  }
+
+  async getEventByOrganizer(organizerId: number, eventId: number): Promise<any> {
+    const event = await this.eventRepository.findOne({
+      where: { id: eventId, organizer: { id: organizerId } },
+      relations: ['organizer'],
+    });
+    if (!event) throw new NotFoundException('Event not found');
+    if (!event.images) event.images = [];
+    return {
+      ...event,
+      organizer: event.organizer ? { id: event.organizer.id, role: event.organizer.role } : null,
+    };
+  }
+
   async createEvent(data: Partial<Event>, organizer: User): Promise<any> {
     const event = this.eventRepository.create({ ...data, organizer, status: EventStatus.ACTIVE });
     const saved = await this.eventRepository.save(event);

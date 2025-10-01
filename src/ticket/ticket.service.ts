@@ -11,6 +11,7 @@ import { Event } from '../event/event.entity';
 import { v4 as uuidv4 } from 'uuid';
 import { EmailService } from '../notification/email.service';
 import { SmsService } from '../notification/sms.service';
+import { MpesaService } from '../mpesa/mpesa.service';
 
 @Injectable()
 export class TicketService {
@@ -21,9 +22,10 @@ export class TicketService {
     private readonly eventRepository: Repository<Event>,
     private readonly emailService: EmailService,
     private readonly smsService: SmsService,
+    private readonly mpesaService: MpesaService,
   ) {}
 
-  async purchaseTicket(data: Partial<Ticket>): Promise<Ticket> {
+  async purchaseTicket(data: Partial<Ticket>): Promise<any> {
     const eventId = typeof data.event === 'number'
       ? data.event
       : (data.event as any)?.id ?? undefined;
@@ -36,21 +38,34 @@ export class TicketService {
     if (!event || String(event.status) !== 'active') {
       throw new BadRequestException('Invalid event');
     }
+    // Initiate Mpesa payment
+    if (!data.buyerPhone || !data.buyerName) {
+      throw new BadRequestException('buyerPhone and buyerName are required for payment');
+    }
+    const price = typeof data.price === 'number' ? data.price : Number(data.price);
+    if (isNaN(price)) {
+      throw new BadRequestException('price is required and must be a number');
+    }
+    const mpesaRes = await this.mpesaService.stkPush({
+      amount: price,
+      phone: data.buyerPhone,
+      accountReference: event.title || 'Ticket',
+      transactionDesc: `Ticket for ${event.title}`,
+    });
+    // For now, save as VALID (or you can add a new status if you want to track pending payments)
     const ticket = this.ticketRepository.create({
       ...data,
+      price,
       event: event,
       qrCode: uuidv4(),
       status: TicketStatus.VALID,
     });
     const savedTicket = await this.ticketRepository.save(ticket);
-    // Send notifications
-    if (savedTicket.buyerEmail) {
-      await this.emailService.sendTicketConfirmation(savedTicket.buyerEmail, event.title, savedTicket.id);
-    }
-    if (savedTicket.buyerPhone) {
-      await this.smsService.sendTicketConfirmation(savedTicket.buyerPhone, event.title, savedTicket.id);
-    }
-    return savedTicket;
+    // Send notifications (optional, after payment confirmation)
+    return {
+      ticket: savedTicket,
+      mpesa: mpesaRes,
+    };
   }
 
   async getTicket(id: number): Promise<Ticket> {

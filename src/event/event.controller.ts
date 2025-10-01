@@ -27,7 +27,61 @@ export class EventController {
     private readonly userService: UserService,
   ) {}
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('event_organizer')
+  @Get('organizer/:organizerId')
+  async listEventsByOrganizer(@Param('organizerId') organizerId: number, @Req() req: any) {
+    const userId: number = typeof req.user.sub === 'string' ? parseInt(req.user.sub, 10) : Number(req.user.sub);
+    if (isNaN(userId)) throw new Error('Invalid user id in request');
+    if (userId !== Number(organizerId)) {
+      return { statusCode: 403, message: 'Forbidden: You can only view your own events.' };
+    }
+    return this.eventService.listEventsByOrganizer(userId);
+  }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('event_organizer')
+  @Get('organizer/:organizerId/:eventId')
+  async getEventByOrganizer(
+    @Param('organizerId') organizerId: number,
+    @Param('eventId') eventId: number,
+    @Req() req: any,
+  ) {
+    const userId: number = typeof req.user.sub === 'string' ? parseInt(req.user.sub, 10) : Number(req.user.sub);
+    if (isNaN(userId)) throw new Error('Invalid user id in request');
+    if (userId !== Number(organizerId)) {
+      return { statusCode: 403, message: 'Forbidden: You can only view your own events.' };
+    }
+    return this.eventService.getEventByOrganizer(userId, eventId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('event_organizer')
+  @Get('my')
+  async listMyActive(@Req() req: any) {
+    const userId: number = typeof req.user.sub === 'string' ? parseInt(req.user.sub, 10) : Number(req.user.sub);
+    if (isNaN(userId)) {
+      throw new Error('Invalid user id in request');
+    }
+    const user = await this.userService.findById(userId);
+  // Filter active events for this organizer
+  const allActive = await this.eventService.listActiveEvents();
+  return allActive.filter(event => event.organizer && event.organizer.id === user.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('event_organizer')
+  @Get('my-archived')
+  async listMyArchived(@Req() req: any) {
+    const userId: number = typeof req.user.sub === 'string' ? parseInt(req.user.sub, 10) : Number(req.user.sub);
+    if (isNaN(userId)) {
+      throw new Error('Invalid user id in request');
+    }
+    const user = await this.userService.findById(userId);
+  // Filter archived events for this organizer
+  const allArchived = await this.eventService.listArchivedEvents();
+  return allArchived.filter(event => event.organizer && event.organizer.id === user.id);
+  }
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'event_organizer')
   @Post()
