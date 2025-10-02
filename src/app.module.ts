@@ -7,6 +7,9 @@ import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { EventModule } from './event/event.module';
 import { TicketModule } from './ticket/ticket.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { SettingsModule } from './settings/settings.module';
+import { AuditModule } from './audit/audit.module';
 
 @Module({
   imports: [
@@ -25,6 +28,9 @@ import { TicketModule } from './ticket/ticket.module';
     AuthModule,
     EventModule,
     TicketModule,
+    AnalyticsModule,
+    SettingsModule,
+    AuditModule,
   ],
   controllers: [AppController],
   providers: [AppService],

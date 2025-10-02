@@ -28,16 +28,13 @@ export class EventController {
   ) {}
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('event_organizer')
+  @Roles('organizer', 'admin')
   @Get('organizer/:organizerId')
   async listEventsByOrganizer(
     @Param('organizerId') organizerId: number,
     @Req() req: any,
   ) {
-    const userId: number =
-      typeof req.user.sub === 'string'
-        ? parseInt(req.user.sub, 10)
-        : Number(req.user.sub);
+    const userId: number = Number(req.user.id);
     if (isNaN(userId)) throw new Error('Invalid user id in request');
     if (userId !== Number(organizerId)) {
       return {
@@ -56,10 +53,7 @@ export class EventController {
     @Param('eventId') eventId: number,
     @Req() req: any,
   ) {
-    const userId: number =
-      typeof req.user.sub === 'string'
-        ? parseInt(req.user.sub, 10)
-        : Number(req.user.sub);
+    const userId: number = Number(req.user.id);
     if (isNaN(userId)) throw new Error('Invalid user id in request');
     if (userId !== Number(organizerId)) {
       return {
@@ -70,42 +64,55 @@ export class EventController {
     return this.eventService.getEventByOrganizer(userId, eventId);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('event_organizer')
+  @UseGuards(JwtAuthGuard)
   @Get('my')
   async listMyActive(@Req() req: any) {
-    const userId: number =
-      typeof req.user.sub === 'string'
-        ? parseInt(req.user.sub, 10)
-        : Number(req.user.sub);
+    console.log('🏢 /events/my called with user:', req.user);
+    const userId: number = Number(req.user.id);
+    console.log('🏢 User ID:', userId);
+    
     if (isNaN(userId)) {
+      console.error('❌ Invalid user ID:', req.user.id);
       throw new Error('Invalid user id in request');
     }
+    
     const user = await this.userService.findById(userId);
+    console.log('🏢 Found user:', user ? 'Yes' : 'No');
+    
     // Filter active events for this organizer
     const allActive = await this.eventService.listActiveEvents();
-    return allActive.filter(
+    console.log('🏢 All active events:', allActive.length);
+    
+    const myEvents = allActive.filter(
       (event) => event.organizer && event.organizer.id === user.id,
     );
+    console.log('🏢 My events:', myEvents.length);
+    
+    return myEvents;
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('event_organizer')
+  @Roles('organizer', 'admin')
   @Get('my-archived')
   async listMyArchived(@Req() req: any) {
-    const userId: number =
-      typeof req.user.sub === 'string'
-        ? parseInt(req.user.sub, 10)
-        : Number(req.user.sub);
+    console.log('🏢 /events/my-archived called with user:', req.user);
+    const userId: number = Number(req.user.id);
+    
     if (isNaN(userId)) {
+      console.error('❌ Invalid user ID:', req.user.id);
       throw new Error('Invalid user id in request');
     }
+    
     const user = await this.userService.findById(userId);
+    console.log('🏢 Found user for archived:', user ? 'Yes' : 'No');
+    
     // Filter archived events for this organizer
     const allArchived = await this.eventService.listArchivedEvents();
-    return allArchived.filter(
+    const myArchivedEvents = allArchived.filter(
       (event) => event.organizer && event.organizer.id === user.id,
     );
+    
+    return myArchivedEvents;
   }
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'event_organizer')
@@ -123,11 +130,8 @@ export class EventController {
       // Accept base64 images from frontend
       imageUrls = await uploadImagesToSupabase(body.images as string[]);
     }
-    // Use JWT 'sub' field as user id
-    const userId: number =
-      typeof req.user.sub === 'string'
-        ? parseInt(req.user.sub, 10)
-        : Number(req.user.sub);
+    // Use JWT 'id' field as user id (consistent with other methods)
+    const userId: number = Number(req.user.id);
     if (isNaN(userId)) {
       throw new Error('Invalid user id in request');
     }
@@ -154,11 +158,8 @@ export class EventController {
     } else if (Array.isArray(body?.images)) {
       imageUrls = await uploadImagesToSupabase(body.images as string[]);
     }
-    // Use JWT 'sub' field as user id
-    const userId: number =
-      typeof req.user.sub === 'string'
-        ? parseInt(req.user.sub, 10)
-        : Number(req.user.sub);
+    // Use JWT 'id' field as user id (consistent with other methods)
+    const userId: number = Number(req.user.id);
     if (isNaN(userId)) {
       throw new Error('Invalid user id in request');
     }
@@ -174,11 +175,8 @@ export class EventController {
   @Roles('admin')
   @Delete(':id')
   async softDelete(@Param('id') id: number, @Req() req: any) {
-    // Use JWT 'sub' field as user id
-    const userId: number =
-      typeof req.user.sub === 'string'
-        ? parseInt(req.user.sub, 10)
-        : Number(req.user.sub);
+    // Use JWT 'id' field as user id (consistent with other methods)
+    const userId: number = Number(req.user.id);
     if (isNaN(userId)) {
       throw new Error('Invalid user id in request');
     }
@@ -190,11 +188,8 @@ export class EventController {
   @Roles('admin', 'event_organizer')
   @Patch(':id/archive')
   async archive(@Param('id') id: number, @Req() req: any) {
-    // Use JWT 'sub' field as user id
-    const userId: number =
-      typeof req.user.sub === 'string'
-        ? parseInt(req.user.sub, 10)
-        : Number(req.user.sub);
+    // Use JWT 'id' field as user id (consistent with other methods)
+    const userId: number = Number(req.user.id);
     if (isNaN(userId)) {
       throw new Error('Invalid user id in request');
     }
@@ -210,6 +205,62 @@ export class EventController {
   @Get(':id')
   async getEvent(@Param('id') id: number) {
     return this.eventService.getEvent(id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Get('admin/all')
+  async getAllEventsForAdmin() {
+    return this.eventService.getAllEventsForAdmin();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Get('admin/statistics')
+  async getEventStatistics() {
+    return this.eventService.getEventStatistics();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Get('admin/pending')
+  async getPendingEvents() {
+    return this.eventService.getPendingEvents();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Put('admin/:id/approve')
+  async approveEvent(@Param('id') id: number, @Req() req: any) {
+    return this.eventService.approveEvent(id, req.user);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Put('admin/:id/reject')
+  async rejectEvent(@Param('id') id: number, @Body() body: { reason: string }, @Req() req: any) {
+    return this.eventService.rejectEvent(id, body.reason, req.user);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Put('admin/:id/feature')
+  async featureEvent(@Param('id') id: number, @Req() req: any) {
+    return this.eventService.featureEvent(id, req.user);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Put('admin/:id/unfeature')
+  async unfeatureEvent(@Param('id') id: number, @Req() req: any) {
+    return this.eventService.unfeatureEvent(id, req.user);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Delete('admin/:id')
+  async deleteEventAsAdmin(@Param('id') id: number, @Req() req: any) {
+    return this.eventService.deleteEventAsAdmin(id, req.user);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

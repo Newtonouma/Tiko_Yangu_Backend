@@ -7,6 +7,7 @@ import { UserService } from '../user/user.service';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { JwtStrategy } from './jwt.strategy';
       secret: process.env.JWT_SECRET || 'changeme',
       signOptions: { expiresIn: '1d' },
     }),
+    AuditModule,
   ],
   providers: [AuthService, UserService, JwtStrategy],
   controllers: [AuthController],

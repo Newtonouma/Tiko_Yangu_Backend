@@ -2,8 +2,10 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Body,
   Param,
+  Query,
   UseGuards,
   Request,
   ForbiddenException,
@@ -11,6 +13,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { TicketService } from './ticket.service';
+import { TicketStatus } from './ticket.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -38,8 +41,7 @@ export class TicketController {
   }
 
   @Get('event/:eventId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'organizer')
+  @UseGuards(JwtAuthGuard)
   async listTicketsForEvent(@Param('eventId') eventId: number, @Request() req) {
     return this.ticketService.listTicketsForEvent(eventId, req.user);
   }
@@ -56,5 +58,77 @@ export class TicketController {
   @Roles('admin', 'organizer')
   async use(@Param('id') id: number, @Request() req) {
     return this.ticketService.useTicket(id, req.user);
+  }
+
+  // Admin-specific ticket management endpoints
+  @Get('admin/all')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  async getAllTicketsForAdmin() {
+    return await this.ticketService.getAllTicketsForAdmin();
+  }
+
+  @Get('admin/statistics')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  async getTicketStatistics() {
+    return await this.ticketService.getTicketStatisticsForAdmin();
+  }
+
+  @Get('admin/revenue')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  async getRevenueReport(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return await this.ticketService.getRevenueReport(startDate, endDate);
+  }
+
+  @Put('admin/:id/refund')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  async refundTicket(
+    @Param('id') id: number,
+    @Body() body: { reason: string },
+    @Request() req,
+  ) {
+    return await this.ticketService.refundTicket(id, body.reason, req.user);
+  }
+
+  @Put('admin/:id/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  async updateTicketStatus(
+    @Param('id') id: number,
+    @Body() body: { status: TicketStatus },
+    @Request() req,
+  ) {
+    return await this.ticketService.updateTicketStatus(id, body.status, req.user);
+  }
+
+  @Get('admin/search')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  async searchTickets(
+    @Query('eventId') eventId?: number,
+    @Query('buyerEmail') buyerEmail?: string,
+    @Query('buyerName') buyerName?: string,
+    @Query('status') status?: TicketStatus,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('limit') limit?: number,
+    @Query('offset') offset?: number,
+  ) {
+    return await this.ticketService.searchTickets({
+      eventId,
+      buyerEmail,
+      buyerName,
+      status,
+      startDate,
+      endDate,
+      limit,
+      offset,
+    });
   }
 }

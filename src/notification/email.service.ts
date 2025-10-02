@@ -33,4 +33,18 @@ export class EmailService {
       this.logger.error(`Failed to send email: ${error.message}`);
     }
   }
+
+  async sendEmail(to: string, subject: string, message: string) {
+    try {
+      await this.transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to,
+        subject,
+        text: message,
+      });
+      this.logger.log(`Email sent to ${to} with subject: ${subject}`);
+    } catch (error) {
+      this.logger.error(`Failed to send email: ${error.message}`);
+    }
+  }
 }

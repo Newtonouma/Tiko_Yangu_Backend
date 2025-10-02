@@ -10,6 +10,7 @@ import {
 export enum UserRole {
   ADMIN = 'admin',
   EVENT_ORGANIZER = 'event_organizer',
+  ATTENDEE = 'attendee',
 }
 
 @Entity()
@@ -36,6 +37,9 @@ export class User {
     default: UserRole.EVENT_ORGANIZER,
   })
   role: UserRole;
+
+  @Column({ default: true })
+  isActive: boolean;
 
   @CreateDateColumn()
   createdAt: Date;

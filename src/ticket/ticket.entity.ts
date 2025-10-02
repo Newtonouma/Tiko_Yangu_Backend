@@ -12,6 +12,7 @@ export enum TicketStatus {
   VALID = 'valid',
   USED = 'used',
   CANCELED = 'canceled',
+  REFUNDED = 'refunded',
 }
 
 @Entity()
@@ -42,6 +43,22 @@ export class Ticket {
 
   @Column()
   qrCode: string;
+
+  // Admin fields
+  @Column({ nullable: true })
+  refundReason?: string;
+
+  @Column({ nullable: true })
+  refundedAt?: Date;
+
+  @Column({ nullable: true })
+  refundedBy?: number;
+
+  @Column({ nullable: true })
+  lastModifiedBy?: number;
+
+  @Column({ nullable: true })
+  lastModifiedAt?: Date;
 
   @CreateDateColumn()
   createdAt: Date;

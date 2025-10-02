@@ -6,6 +6,8 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user/user.service';
 import { User, UserRole } from '../user/user.entity';
+import { AuditService } from '../audit/audit.service';
+import { AuditAction, AuditEntityType } from '../audit/audit-log.entity';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -13,6 +15,7 @@ export class AuthService {
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
+    private readonly auditService: AuditService,
   ) {}
 
   async validateUser(email: string, pass: string): Promise<User> {
@@ -23,8 +26,20 @@ export class AuthService {
     return user;
   }
 
-  async login(email: string, password: string) {
+  async login(email: string, password: string, ipAddress?: string) {
     const user = await this.validateUser(email, password);
+    
+    // Log successful login
+    await this.auditService.logUserAction(
+      AuditAction.LOGIN,
+      AuditEntityType.USER,
+      user,
+      {
+        description: `Login successful for ${user.role} user`,
+        metadata: { ipAddress, loginTime: new Date() },
+      },
+    );
+
     const payload = { username: user.email, sub: user.id, role: user.role };
     return {
       access_token: this.jwtService.sign(payload),

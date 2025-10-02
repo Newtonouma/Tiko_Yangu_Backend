@@ -10,8 +10,11 @@ import {
 import { User } from '../user/user.entity';
 
 export enum EventStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
   ACTIVE = 'active',
   ARCHIVED = 'archived',
+  REJECTED = 'rejected',
   DELETED = 'deleted',
 }
 
@@ -74,8 +77,20 @@ export class Event {
   @JoinColumn({ name: 'organizerId' })
   organizer: User;
 
-  @Column({ type: 'enum', enum: EventStatus, default: EventStatus.ACTIVE })
+  @Column({ type: 'enum', enum: EventStatus, default: EventStatus.PENDING })
   status: EventStatus;
+
+  @Column({ default: false })
+  isFeatured: boolean;
+
+  @Column({ nullable: true })
+  rejectionReason?: string;
+
+  @Column({ nullable: true })
+  approvedBy?: number;
+
+  @Column({ nullable: true })
+  approvedAt?: Date;
 
   @CreateDateColumn()
   createdAt: Date;
