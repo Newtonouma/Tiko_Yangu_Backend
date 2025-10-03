@@ -41,26 +41,23 @@ export class UserService {
     return user === null ? undefined : user;
   }
 
-  async createEventOrganizer(data: Partial<User>): Promise<User> {
+  async createUser(data: Partial<User> & { role?: UserRole }): Promise<User> {
     if (!data.password) throw new Error('Password is required');
     const hash = await bcrypt.hash(String(data.password), 10);
     const user = this.userRepository.create({
       ...data,
       password: hash,
-      role: UserRole.EVENT_ORGANIZER,
+      role: data.role || UserRole.EVENT_ORGANIZER,
     });
     return await this.userRepository.save(user);
   }
 
+  async createEventOrganizer(data: Partial<User>): Promise<User> {
+    return this.createUser({ ...data, role: UserRole.EVENT_ORGANIZER });
+  }
+
   async createAdmin(data: Partial<User>): Promise<User> {
-    if (!data.password) throw new Error('Password is required');
-    const hash = await bcrypt.hash(String(data.password), 10);
-    const user = this.userRepository.create({
-      ...data,
-      password: hash,
-      role: UserRole.ADMIN,
-    });
-    return await this.userRepository.save(user);
+    return this.createUser({ ...data, role: UserRole.ADMIN });
   }
 
   async deleteUser(id: number): Promise<void> {

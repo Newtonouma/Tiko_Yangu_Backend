@@ -31,6 +31,9 @@ export class User {
   @Column({ nullable: true })
   resetPasswordToken?: string;
 
+  @Column({ nullable: true })
+  organization?: string;
+
   @Column({
     type: 'enum',
     enum: UserRole,
