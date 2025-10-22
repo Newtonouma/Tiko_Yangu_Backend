@@ -24,7 +24,9 @@ import { MpesaModule } from './mpesa/mpesa.module';
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
       autoLoadEntities: true,
-      synchronize: process.env.NODE_ENV !== 'production', // Disabled in production for performance
+      // Temporarily enable synchronize to create tables in production
+      // Remember to disable after the schema is created (use migrations afterwards)
+      synchronize: true,
       logging: process.env.NODE_ENV !== 'production',
       poolSize: 10,
     }),
