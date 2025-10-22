@@ -10,6 +10,7 @@ import { TicketModule } from './ticket/ticket.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { SettingsModule } from './settings/settings.module';
 import { AuditModule } from './audit/audit.module';
+import { MarketingModule } from './marketing/marketing.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { AuditModule } from './audit/audit.module';
     AnalyticsModule,
     SettingsModule,
     AuditModule,
+    MarketingModule,
   ],
   controllers: [AppController],
   providers: [AppService],

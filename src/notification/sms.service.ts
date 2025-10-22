@@ -26,7 +26,25 @@ export class SmsService {
       });
       this.logger.log(`Confirmation SMS sent to ${to}`);
     } catch (error) {
-      this.logger.error(`Failed to send SMS: ${error.message}`);
+      this.logger.error(
+        `Failed to send SMS: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    }
+  }
+
+  async sendMarketingMessage(to: string, message: string) {
+    try {
+      await this.client.messages.create({
+        body: message,
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to,
+      });
+      this.logger.log(`Marketing SMS sent to ${to}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to send marketing SMS: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+      throw error;
     }
   }
 }

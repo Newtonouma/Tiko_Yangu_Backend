@@ -8,6 +8,9 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { AuditModule } from '../audit/audit.module';
+import { PasswordController } from './password.controller';
+import { PasswordService } from './password.service';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
@@ -18,9 +21,10 @@ import { AuditModule } from '../audit/audit.module';
       signOptions: { expiresIn: '1d' },
     }),
     AuditModule,
+    NotificationModule,
   ],
-  providers: [AuthService, UserService, JwtStrategy],
-  controllers: [AuthController],
+  providers: [AuthService, UserService, JwtStrategy, PasswordService],
+  controllers: [AuthController, PasswordController],
   exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

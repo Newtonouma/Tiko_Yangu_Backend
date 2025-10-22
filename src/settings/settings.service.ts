@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SystemSetting, SettingType } from './system-setting.entity';
@@ -169,7 +173,9 @@ export class SettingsService {
     });
 
     if (existingSetting) {
-      throw new BadRequestException(`Setting with key '${settingData.key}' already exists`);
+      throw new BadRequestException(
+        `Setting with key '${settingData.key}' already exists`,
+      );
     }
 
     // Validate value based on type
@@ -187,7 +193,9 @@ export class SettingsService {
     const setting = await this.getSetting(key);
 
     if (setting.isSystem) {
-      throw new BadRequestException(`System setting '${key}' cannot be deleted`);
+      throw new BadRequestException(
+        `System setting '${key}' cannot be deleted`,
+      );
     }
 
     await this.settingRepository.delete({ key });
@@ -206,11 +214,11 @@ export class SettingsService {
     ];
 
     const settings = await this.settingRepository.find({
-      where: publicKeys.map(key => ({ key })),
+      where: publicKeys.map((key) => ({ key })),
     });
 
     const publicSettings: Record<string, any> = {};
-    settings.forEach(setting => {
+    settings.forEach((setting) => {
       publicSettings[setting.key] = this.parseSettingValue(setting);
     });
 
@@ -262,12 +270,16 @@ export class SettingsService {
     switch (type) {
       case SettingType.BOOLEAN:
         if (!['true', 'false'].includes(value.toLowerCase())) {
-          throw new BadRequestException('Boolean setting must be "true" or "false"');
+          throw new BadRequestException(
+            'Boolean setting must be "true" or "false"',
+          );
         }
         break;
       case SettingType.NUMBER:
         if (isNaN(parseFloat(value))) {
-          throw new BadRequestException('Number setting must be a valid number');
+          throw new BadRequestException(
+            'Number setting must be a valid number',
+          );
         }
         break;
       case SettingType.JSON:

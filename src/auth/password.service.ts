@@ -8,12 +8,14 @@ import { UserService } from '../user/user.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
+import { EmailService } from '../notification/email.service';
 
 @Injectable()
 export class PasswordService {
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
+    private readonly emailService: EmailService,
   ) {}
 
   async requestPasswordReset(email: string): Promise<void> {
@@ -23,7 +25,7 @@ export class PasswordService {
     await this.userService.updateUser(user.id, {
       resetPasswordToken: user.resetPasswordToken,
     });
-    // Here you would send an email with the token (user.resetPasswordToken)
+    await this.emailService.sendPasswordReset(email, user.resetPasswordToken);
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {

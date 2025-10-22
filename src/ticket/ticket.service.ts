@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -15,6 +16,8 @@ import { MpesaService } from '../mpesa/mpesa.service';
 
 @Injectable()
 export class TicketService {
+  private readonly logger = new Logger(TicketService.name);
+
   constructor(
     @InjectRepository(Ticket)
     private readonly ticketRepository: Repository<Ticket>,
@@ -65,7 +68,31 @@ export class TicketService {
       status: TicketStatus.VALID,
     });
     const savedTicket = await this.ticketRepository.save(ticket);
-    // Send notifications (optional, after payment confirmation)
+
+    // Send ticket confirmation notifications
+    try {
+      if (savedTicket.buyerEmail) {
+        await this.emailService.sendTicketConfirmation(
+          savedTicket.buyerEmail,
+          event.title,
+          savedTicket.id,
+        );
+      }
+
+      if (savedTicket.buyerPhone) {
+        await this.smsService.sendTicketConfirmation(
+          savedTicket.buyerPhone,
+          event.title,
+          savedTicket.id,
+        );
+      }
+    } catch (notificationError) {
+      this.logger.error(
+        `Failed to send ticket confirmation: ${notificationError.message}`,
+      );
+      // Don't fail the ticket purchase if notifications fail
+    }
+
     return {
       ticket: savedTicket,
       mpesa: mpesaRes,
@@ -87,34 +114,44 @@ export class TicketService {
     console.log('🎫 User:', user);
     console.log('🎫 User ID:', user.id, 'Type:', typeof user.id);
     console.log('🎫 User Role:', user.role);
-    
+
     const event = await this.eventRepository.findOne({
       where: { id: eventId },
       relations: ['organizer'],
     });
-    
+
     console.log('🎫 Event found:', !!event);
     if (event) {
       console.log('🎫 Event details:', {
         id: event.id,
         title: event.title,
-        organizer: event.organizer
+        organizer: event.organizer,
       });
-      console.log('🎫 Event organizer ID:', event.organizer?.id, 'Type:', typeof event.organizer?.id);
+      console.log(
+        '🎫 Event organizer ID:',
+        event.organizer?.id,
+        'Type:',
+        typeof event.organizer?.id,
+      );
     } else {
       console.log('❌ Event not found for ID:', eventId);
     }
-    
+
     if (!event) throw new NotFoundException('Event not found');
-    
+
     // Convert both IDs to numbers for comparison
     const userIdNum = Number(user.id);
     const organizerIdNum = Number(event.organizer?.id);
-    
-    console.log('🎫 Comparison: userIdNum=', userIdNum, 'organizerIdNum=', organizerIdNum);
+
+    console.log(
+      '🎫 Comparison: userIdNum=',
+      userIdNum,
+      'organizerIdNum=',
+      organizerIdNum,
+    );
     console.log('🎫 Are they equal?', userIdNum === organizerIdNum);
     console.log('🎫 Is admin?', user.role === 'admin');
-    
+
     // Temporarily disable authorization check for debugging
     // if (user.role !== 'admin' && organizerIdNum !== userIdNum) {
     //   console.log('❌ Access denied: Not admin and not organizer');
@@ -125,17 +162,24 @@ export class TicketService {
       throw new ForbiddenException('Not allowed');
     }
     console.log('✅ Authorization passed');
-    
-    const tickets = await this.ticketRepository.find({ 
+
+    const tickets = await this.ticketRepository.find({
       where: { event: { id: eventId } },
-      relations: ['event'] // Make sure we include event details
+      relations: ['event'], // Make sure we include event details
     });
     console.log('🎫 Tickets found:', tickets.length);
-    console.log('🎫 First ticket sample:', tickets[0] ? {
-      id: tickets[0].id,
-      event: tickets[0].event ? { id: tickets[0].event.id, title: tickets[0].event.title } : null,
-      buyerName: tickets[0].buyerName
-    } : 'No tickets');
+    console.log(
+      '🎫 First ticket sample:',
+      tickets[0]
+        ? {
+            id: tickets[0].id,
+            event: tickets[0].event
+              ? { id: tickets[0].event.id, title: tickets[0].event.title }
+              : null,
+            buyerName: tickets[0].buyerName,
+          }
+        : 'No tickets',
+    );
     return tickets;
   }
 
@@ -181,15 +225,21 @@ export class TicketService {
       order: { createdAt: 'DESC' },
     });
 
-    const byStatus = tickets.reduce((acc, ticket) => {
-      acc[ticket.status] = (acc[ticket.status] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const byStatus = tickets.reduce(
+      (acc, ticket) => {
+        acc[ticket.status] = (acc[ticket.status] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     const revenue = tickets.reduce(
       (acc, ticket) => {
         acc.total += Number(ticket.price) || 0;
-        if (ticket.status === TicketStatus.VALID || ticket.status === TicketStatus.USED) {
+        if (
+          ticket.status === TicketStatus.VALID ||
+          ticket.status === TicketStatus.USED
+        ) {
           acc.paid += Number(ticket.price) || 0;
         }
         if (ticket.status === TicketStatus.REFUNDED) {
@@ -197,7 +247,7 @@ export class TicketService {
         }
         return acc;
       },
-      { total: 0, paid: 0, refunded: 0 }
+      { total: 0, paid: 0, refunded: 0 },
     );
 
     return {
@@ -226,35 +276,50 @@ export class TicketService {
     });
 
     const totalTickets = tickets.length;
-    const totalRevenue = tickets.reduce((sum, ticket) => sum + (Number(ticket.price) || 0), 0);
-    const averageTicketPrice = totalTickets > 0 ? totalRevenue / totalTickets : 0;
+    const totalRevenue = tickets.reduce(
+      (sum, ticket) => sum + (Number(ticket.price) || 0),
+      0,
+    );
+    const averageTicketPrice =
+      totalTickets > 0 ? totalRevenue / totalTickets : 0;
 
-    const ticketsByStatus = tickets.reduce((acc, ticket) => {
-      acc[ticket.status] = (acc[ticket.status] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const ticketsByStatus = tickets.reduce(
+      (acc, ticket) => {
+        acc[ticket.status] = (acc[ticket.status] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
-    const ticketsByMonth = tickets.reduce((acc, ticket) => {
-      const month = ticket.createdAt ? ticket.createdAt.toISOString().substring(0, 7) : 'unknown';
-      acc[month] = (acc[month] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const ticketsByMonth = tickets.reduce(
+      (acc, ticket) => {
+        const month = ticket.createdAt
+          ? ticket.createdAt.toISOString().substring(0, 7)
+          : 'unknown';
+        acc[month] = (acc[month] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
-    const eventStats = tickets.reduce((acc, ticket) => {
-      const eventId = ticket.event?.id || 0;
-      const eventTitle = ticket.event?.title || 'Unknown Event';
-      if (!acc[eventId]) {
-        acc[eventId] = {
-          eventId,
-          eventTitle,
-          ticketsSold: 0,
-          revenue: 0,
-        };
-      }
-      acc[eventId].ticketsSold += 1;
-      acc[eventId].revenue += Number(ticket.price) || 0;
-      return acc;
-    }, {} as Record<number, any>);
+    const eventStats = tickets.reduce(
+      (acc, ticket) => {
+        const eventId = ticket.event?.id || 0;
+        const eventTitle = ticket.event?.title || 'Unknown Event';
+        if (!acc[eventId]) {
+          acc[eventId] = {
+            eventId,
+            eventTitle,
+            ticketsSold: 0,
+            revenue: 0,
+          };
+        }
+        acc[eventId].ticketsSold += 1;
+        acc[eventId].revenue += Number(ticket.price) || 0;
+        return acc;
+      },
+      {} as Record<number, any>,
+    );
 
     const topEvents = Object.values(eventStats)
       .sort((a: any, b: any) => b.revenue - a.revenue)
@@ -270,7 +335,10 @@ export class TicketService {
     };
   }
 
-  async getRevenueReport(startDate?: string, endDate?: string): Promise<{
+  async getRevenueReport(
+    startDate?: string,
+    endDate?: string,
+  ): Promise<{
     totalRevenue: number;
     paidRevenue: number;
     refundedAmount: number;
@@ -278,7 +346,8 @@ export class TicketService {
     period: { start: string; end: string };
     dailyRevenue: Array<{ date: string; revenue: number; tickets: number }>;
   }> {
-    const query = this.ticketRepository.createQueryBuilder('ticket')
+    const query = this.ticketRepository
+      .createQueryBuilder('ticket')
       .leftJoinAndSelect('ticket.event', 'event');
 
     if (startDate) {
@@ -290,23 +359,35 @@ export class TicketService {
 
     const tickets = await query.getMany();
 
-    const totalRevenue = tickets.reduce((sum, ticket) => sum + (Number(ticket.price) || 0), 0);
+    const totalRevenue = tickets.reduce(
+      (sum, ticket) => sum + (Number(ticket.price) || 0),
+      0,
+    );
     const paidRevenue = tickets
-      .filter(ticket => ticket.status === TicketStatus.VALID || ticket.status === TicketStatus.USED)
+      .filter(
+        (ticket) =>
+          ticket.status === TicketStatus.VALID ||
+          ticket.status === TicketStatus.USED,
+      )
       .reduce((sum, ticket) => sum + (Number(ticket.price) || 0), 0);
     const refundedAmount = tickets
-      .filter(ticket => ticket.status === TicketStatus.REFUNDED)
+      .filter((ticket) => ticket.status === TicketStatus.REFUNDED)
       .reduce((sum, ticket) => sum + (Number(ticket.price) || 0), 0);
 
-    const dailyStats = tickets.reduce((acc, ticket) => {
-      const date = ticket.createdAt ? ticket.createdAt.toISOString().split('T')[0] : 'unknown';
-      if (!acc[date]) {
-        acc[date] = { revenue: 0, tickets: 0 };
-      }
-      acc[date].revenue += Number(ticket.price) || 0;
-      acc[date].tickets += 1;
-      return acc;
-    }, {} as Record<string, { revenue: number; tickets: number }>);
+    const dailyStats = tickets.reduce(
+      (acc, ticket) => {
+        const date = ticket.createdAt
+          ? ticket.createdAt.toISOString().split('T')[0]
+          : 'unknown';
+        if (!acc[date]) {
+          acc[date] = { revenue: 0, tickets: 0 };
+        }
+        acc[date].revenue += Number(ticket.price) || 0;
+        acc[date].tickets += 1;
+        return acc;
+      },
+      {} as Record<string, { revenue: number; tickets: number }>,
+    );
 
     const dailyRevenue = Object.entries(dailyStats)
       .map(([date, stats]) => ({ date, ...stats }))
@@ -325,7 +406,11 @@ export class TicketService {
     };
   }
 
-  async refundTicket(ticketId: number, reason: string, adminUser: any): Promise<Ticket> {
+  async refundTicket(
+    ticketId: number,
+    reason: string,
+    adminUser: any,
+  ): Promise<Ticket> {
     const ticket = await this.ticketRepository.findOne({
       where: { id: ticketId },
       relations: ['event'],
@@ -355,14 +440,18 @@ export class TicketService {
       await this.emailService.sendEmail(
         ticket.buyerEmail,
         'Ticket Refunded',
-        `Your ticket for ${ticket.event?.title} has been refunded. Reason: ${reason}`
+        `Your ticket for ${ticket.event?.title} has been refunded. Reason: ${reason}`,
       );
     }
 
     return savedTicket;
   }
 
-  async updateTicketStatus(ticketId: number, status: TicketStatus, adminUser: any): Promise<Ticket> {
+  async updateTicketStatus(
+    ticketId: number,
+    status: TicketStatus,
+    adminUser: any,
+  ): Promise<Ticket> {
     const ticket = await this.ticketRepository.findOne({
       where: { id: ticketId },
       relations: ['event'],
@@ -385,7 +474,7 @@ export class TicketService {
     if (oldStatus !== status && ticket.buyerEmail) {
       let subject = 'Ticket Status Updated';
       let message = `Your ticket for ${ticket.event?.title} status has been updated to: ${status}`;
-      
+
       if (status === TicketStatus.CANCELED) {
         subject = 'Ticket Canceled';
         message = `Your ticket for ${ticket.event?.title} has been canceled.`;
@@ -413,36 +502,45 @@ export class TicketService {
     tickets: Ticket[];
     total: number;
   }> {
-    const query = this.ticketRepository.createQueryBuilder('ticket')
+    const query = this.ticketRepository
+      .createQueryBuilder('ticket')
       .leftJoinAndSelect('ticket.event', 'event')
       .leftJoinAndSelect('event.organizer', 'organizer');
 
     if (searchParams.eventId) {
-      query.andWhere('ticket.eventId = :eventId', { eventId: searchParams.eventId });
+      query.andWhere('ticket.eventId = :eventId', {
+        eventId: searchParams.eventId,
+      });
     }
 
     if (searchParams.buyerEmail) {
-      query.andWhere('ticket.buyerEmail ILIKE :buyerEmail', { 
-        buyerEmail: `%${searchParams.buyerEmail}%` 
+      query.andWhere('ticket.buyerEmail ILIKE :buyerEmail', {
+        buyerEmail: `%${searchParams.buyerEmail}%`,
       });
     }
 
     if (searchParams.buyerName) {
-      query.andWhere('ticket.buyerName ILIKE :buyerName', { 
-        buyerName: `%${searchParams.buyerName}%` 
+      query.andWhere('ticket.buyerName ILIKE :buyerName', {
+        buyerName: `%${searchParams.buyerName}%`,
       });
     }
 
     if (searchParams.status) {
-      query.andWhere('ticket.status = :status', { status: searchParams.status });
+      query.andWhere('ticket.status = :status', {
+        status: searchParams.status,
+      });
     }
 
     if (searchParams.startDate) {
-      query.andWhere('ticket.createdAt >= :startDate', { startDate: searchParams.startDate });
+      query.andWhere('ticket.createdAt >= :startDate', {
+        startDate: searchParams.startDate,
+      });
     }
 
     if (searchParams.endDate) {
-      query.andWhere('ticket.createdAt <= :endDate', { endDate: searchParams.endDate });
+      query.andWhere('ticket.createdAt <= :endDate', {
+        endDate: searchParams.endDate,
+      });
     }
 
     query.orderBy('ticket.createdAt', 'DESC');
@@ -461,5 +559,88 @@ export class TicketService {
       tickets,
       total,
     };
+  }
+
+  async getCustomersByEventAndIds(
+    eventId: number,
+    customerIds: number[],
+    organizerId: number,
+  ): Promise<Ticket[]> {
+    // First verify the organizer owns this event
+    const event = await this.eventRepository.findOne({
+      where: { id: eventId },
+      relations: ['organizer'],
+    });
+
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+
+    if (event.organizer.id !== organizerId) {
+      throw new ForbiddenException('Not authorized to access this event');
+    }
+
+    // Get tickets for the specified customers and event
+    const query = this.ticketRepository
+      .createQueryBuilder('ticket')
+      .leftJoinAndSelect('ticket.event', 'event')
+      .where('ticket.eventId = :eventId', { eventId });
+
+    if (customerIds.length > 0) {
+      query.andWhere('ticket.id IN (:...customerIds)', { customerIds });
+    }
+
+    const tickets = await query.getMany();
+    return tickets;
+  }
+
+  async getTicketsForOrganizer(organizerId: number): Promise<Ticket[]> {
+    const query = this.ticketRepository
+      .createQueryBuilder('ticket')
+      .leftJoinAndSelect('ticket.event', 'event')
+      .leftJoinAndSelect('event.organizer', 'organizer')
+      .where('event.organizerId = :organizerId', { organizerId });
+
+    const tickets = await query.getMany();
+    return tickets;
+  }
+
+  async getAllTicketsForBroadcast(): Promise<Ticket[]> {
+    const tickets = await this.ticketRepository.find({
+      relations: ['event', 'event.organizer'],
+    });
+    return tickets;
+  }
+
+  async getTicketsForEvent(eventId: number): Promise<Ticket[]> {
+    return this.ticketRepository.find({
+      where: { event: { id: eventId } },
+      relations: ['event'],
+    });
+  }
+
+  async getEventsWithCustomerCounts(): Promise<any[]> {
+    const events = await this.eventRepository
+      .createQueryBuilder('event')
+      .leftJoin('event.tickets', 'ticket')
+      .select(['event.id', 'event.title', 'event.venue', 'event.startDate'])
+      .addSelect('COUNT(DISTINCT ticket.buyerEmail)', 'customerCount')
+      .groupBy('event.id')
+      .getRawAndEntities();
+
+    return events.entities.map((event, index) => ({
+      ...event,
+      customerCount: parseInt(events.raw[index].customerCount) || 0,
+    }));
+  }
+
+  async getUniqueCustomersCount(): Promise<number> {
+    const result = await this.ticketRepository
+      .createQueryBuilder('ticket')
+      .select('COUNT(DISTINCT ticket.buyerEmail)', 'count')
+      .where('ticket.buyerEmail IS NOT NULL')
+      .getRawOne();
+
+    return parseInt(result.count) || 0;
   }
 }

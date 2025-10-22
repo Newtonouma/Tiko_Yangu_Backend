@@ -3,11 +3,13 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
+  OneToMany,
   CreateDateColumn,
   UpdateDateColumn,
   JoinColumn,
 } from 'typeorm';
 import { User } from '../user/user.entity';
+import { GroupTicket } from './group-ticket.entity';
 
 export enum EventStatus {
   PENDING = 'pending',
@@ -76,6 +78,12 @@ export class Event {
   @ManyToOne(() => User, (user) => user.id, { nullable: false, eager: false })
   @JoinColumn({ name: 'organizerId' })
   organizer: User;
+
+  @OneToMany(() => GroupTicket, (groupTicket) => groupTicket.event, {
+    cascade: true,
+    eager: false,
+  })
+  groupTickets: GroupTicket[];
 
   @Column({ type: 'enum', enum: EventStatus, default: EventStatus.PENDING })
   status: EventStatus;

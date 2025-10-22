@@ -75,8 +75,10 @@ export class AuditController {
     @Body() body: { daysToKeep: number },
     @Request() req: any,
   ) {
-    const deletedCount = await this.auditService.cleanupOldLogs(body.daysToKeep);
-    
+    const deletedCount = await this.auditService.cleanupOldLogs(
+      body.daysToKeep,
+    );
+
     // Log the cleanup action
     await this.auditService.logUserAction(
       AuditAction.DELETE,
@@ -117,7 +119,10 @@ export class AuditController {
         userEmail: req.user.email,
         userRole: req.user.role,
         description: 'Event approved for publication',
-        metadata: { eventTitle: 'Urban Night', organizer: 'organizer@gmail.com' },
+        metadata: {
+          eventTitle: 'Urban Night',
+          organizer: 'organizer@gmail.com',
+        },
       },
       {
         action: AuditAction.UPDATE,

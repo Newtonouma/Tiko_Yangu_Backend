@@ -71,7 +71,11 @@ export class SettingsController {
     @Body() body: { value: string },
     @Request() req: any,
   ) {
-    return await this.settingsService.updateSetting(key, body.value, req.user.id);
+    return await this.settingsService.updateSetting(
+      key,
+      body.value,
+      req.user.id,
+    );
   }
 
   @Put('bulk')
@@ -81,7 +85,10 @@ export class SettingsController {
     @Body() body: { updates: Array<{ key: string; value: string }> },
     @Request() req: any,
   ) {
-    return await this.settingsService.bulkUpdateSettings(body.updates, req.user.id);
+    return await this.settingsService.bulkUpdateSettings(
+      body.updates,
+      req.user.id,
+    );
   }
 
   @Delete(':key')

@@ -70,24 +70,24 @@ export class EventController {
     console.log('🏢 /events/my called with user:', req.user);
     const userId: number = Number(req.user.id);
     console.log('🏢 User ID:', userId);
-    
+
     if (isNaN(userId)) {
       console.error('❌ Invalid user ID:', req.user.id);
       throw new Error('Invalid user id in request');
     }
-    
+
     const user = await this.userService.findById(userId);
     console.log('🏢 Found user:', user ? 'Yes' : 'No');
-    
+
     // Filter active events for this organizer
     const allActive = await this.eventService.listActiveEvents();
     console.log('🏢 All active events:', allActive.length);
-    
+
     const myEvents = allActive.filter(
       (event) => event.organizer && event.organizer.id === user.id,
     );
     console.log('🏢 My events:', myEvents.length);
-    
+
     return myEvents;
   }
 
@@ -97,21 +97,21 @@ export class EventController {
   async listMyArchived(@Req() req: any) {
     console.log('🏢 /events/my-archived called with user:', req.user);
     const userId: number = Number(req.user.id);
-    
+
     if (isNaN(userId)) {
       console.error('❌ Invalid user ID:', req.user.id);
       throw new Error('Invalid user id in request');
     }
-    
+
     const user = await this.userService.findById(userId);
     console.log('🏢 Found user for archived:', user ? 'Yes' : 'No');
-    
+
     // Filter archived events for this organizer
     const allArchived = await this.eventService.listArchivedEvents();
     const myArchivedEvents = allArchived.filter(
       (event) => event.organizer && event.organizer.id === user.id,
     );
-    
+
     return myArchivedEvents;
   }
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -238,7 +238,11 @@ export class EventController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @Put('admin/:id/reject')
-  async rejectEvent(@Param('id') id: number, @Body() body: { reason: string }, @Req() req: any) {
+  async rejectEvent(
+    @Param('id') id: number,
+    @Body() body: { reason: string },
+    @Req() req: any,
+  ) {
     return this.eventService.rejectEvent(id, body.reason, req.user);
   }
 

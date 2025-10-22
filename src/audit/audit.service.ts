@@ -79,7 +79,8 @@ export class AuditService {
     logs: AuditLog[];
     total: number;
   }> {
-    const query = this.auditLogRepository.createQueryBuilder('audit')
+    const query = this.auditLogRepository
+      .createQueryBuilder('audit')
       .leftJoinAndSelect('audit.user', 'user');
 
     if (filters?.userId) {
@@ -91,11 +92,15 @@ export class AuditService {
     }
 
     if (filters?.entityType) {
-      query.andWhere('audit.entityType = :entityType', { entityType: filters.entityType });
+      query.andWhere('audit.entityType = :entityType', {
+        entityType: filters.entityType,
+      });
     }
 
     if (filters?.entityId) {
-      query.andWhere('audit.entityId = :entityId', { entityId: filters.entityId });
+      query.andWhere('audit.entityId = :entityId', {
+        entityId: filters.entityId,
+      });
     }
 
     if (filters?.startDate && filters?.endDate) {
@@ -104,9 +109,13 @@ export class AuditService {
         endDate: filters.endDate,
       });
     } else if (filters?.startDate) {
-      query.andWhere('audit.createdAt >= :startDate', { startDate: filters.startDate });
+      query.andWhere('audit.createdAt >= :startDate', {
+        startDate: filters.startDate,
+      });
     } else if (filters?.endDate) {
-      query.andWhere('audit.createdAt <= :endDate', { endDate: filters.endDate });
+      query.andWhere('audit.createdAt <= :endDate', {
+        endDate: filters.endDate,
+      });
     }
 
     query.orderBy('audit.createdAt', 'DESC');
@@ -153,10 +162,13 @@ export class AuditService {
       .groupBy('audit.action')
       .getRawMany();
 
-    const actionBreakdown = actionResults.reduce((acc, item) => {
-      acc[item.action] = parseInt(item.count);
-      return acc;
-    }, {} as Record<string, number>);
+    const actionBreakdown = actionResults.reduce(
+      (acc, item) => {
+        acc[item.action] = parseInt(item.count);
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     // Get entity breakdown
     const entityResults = await this.auditLogRepository
@@ -166,10 +178,13 @@ export class AuditService {
       .groupBy('audit.entityType')
       .getRawMany();
 
-    const entityBreakdown = entityResults.reduce((acc, item) => {
-      acc[item.entityType] = parseInt(item.count);
-      return acc;
-    }, {} as Record<string, number>);
+    const entityBreakdown = entityResults.reduce(
+      (acc, item) => {
+        acc[item.entityType] = parseInt(item.count);
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     // Get user breakdown
     const userResults = await this.auditLogRepository
@@ -183,7 +198,7 @@ export class AuditService {
       .limit(10)
       .getRawMany();
 
-    const userBreakdown = userResults.map(item => ({
+    const userBreakdown = userResults.map((item) => ({
       userId: item.userId,
       userEmail: item.userEmail,
       actionCount: parseInt(item.actionCount),
@@ -215,7 +230,7 @@ export class AuditService {
       .orderBy('DATE(audit.createdAt)', 'ASC')
       .getRawMany();
 
-    const dailyActivity = dailyResults.map(item => ({
+    const dailyActivity = dailyResults.map((item) => ({
       date: item.date,
       count: parseInt(item.count),
     }));

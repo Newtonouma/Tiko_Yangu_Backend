@@ -1,14 +1,14 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Put, 
-  Delete, 
-  Param, 
-  Body, 
-  Req, 
-  UseGuards, 
-  Query 
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Param,
+  Body,
+  Req,
+  UseGuards,
+  Query,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -64,7 +64,10 @@ export class UserController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @Put(':id/role')
-  async updateUserRole(@Param('id') id: number, @Body() body: { role: UserRole }) {
+  async updateUserRole(
+    @Param('id') id: number,
+    @Body() body: { role: UserRole },
+  ) {
     return this.userService.updateUserRole(id, body.role);
   }
 
@@ -84,8 +87,24 @@ export class UserController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
+  @Put(':id/grant-marketing')
+  async grantMarketingAccess(@Param('id') id: number) {
+    return await this.userService.updateMarketingAccess(id, true);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Put(':id/revoke-marketing')
+  async revokeMarketingAccess(@Param('id') id: number) {
+    return await this.userService.updateMarketingAccess(id, false);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
   @Post('admin')
-  async createAdmin(@Body() userData: { name: string; email: string; password: string }) {
+  async createAdmin(
+    @Body() userData: { name: string; email: string; password: string },
+  ) {
     return this.userService.createAdmin(userData);
   }
 

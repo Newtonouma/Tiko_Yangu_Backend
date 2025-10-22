@@ -12,7 +12,10 @@ export class AuthController {
   }
 
   @Post('login')
-  async login(@Body() body: { email: string; password: string }, @Req() req: any) {
+  async login(
+    @Body() body: { email: string; password: string },
+    @Req() req: any,
+  ) {
     const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
     return this.authService.login(body.email, body.password, ipAddress);
   }

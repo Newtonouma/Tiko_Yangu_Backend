@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Event, EventStatus } from './event.entity';
+import { GroupTicket } from './group-ticket.entity';
 import { User } from '../user/user.entity';
 import { Ticket } from '../ticket/ticket.entity';
 
@@ -14,6 +15,8 @@ export class EventService {
   constructor(
     @InjectRepository(Event)
     private readonly eventRepository: Repository<Event>,
+    @InjectRepository(GroupTicket)
+    private readonly groupTicketRepository: Repository<GroupTicket>,
     @InjectRepository(Ticket)
     private readonly ticketRepository: Repository<Ticket>,
   ) {}
@@ -50,13 +53,36 @@ export class EventService {
     };
   }
 
-  async createEvent(data: Partial<Event>, organizer: User): Promise<any> {
+  async createEvent(
+    data: Partial<Event> & { groupTickets?: any[] },
+    organizer: User,
+  ): Promise<any> {
+    const { groupTickets, ...eventData } = data;
+
     const event = this.eventRepository.create({
-      ...data,
+      ...eventData,
       organizer,
       status: EventStatus.ACTIVE,
     });
     const saved = await this.eventRepository.save(event);
+
+    // Handle group tickets if provided
+    if (
+      groupTickets &&
+      Array.isArray(groupTickets) &&
+      groupTickets.length > 0
+    ) {
+      const groupTicketEntities = groupTickets.map((groupTicket) => {
+        return this.groupTicketRepository.create({
+          name: groupTicket.name,
+          memberCount: groupTicket.memberCount,
+          price: groupTicket.price,
+          eventId: saved.id,
+        });
+      });
+      await this.groupTicketRepository.save(groupTicketEntities);
+    }
+
     if (!saved.images) saved.images = [];
     return {
       ...saved,
@@ -69,12 +95,14 @@ export class EventService {
 
   async updateEvent(
     id: number,
-    data: Partial<Event>,
+    data: Partial<Event> & { groupTickets?: any[] },
     user: User,
   ): Promise<any> {
+    const { groupTickets, ...eventData } = data;
+
     const event = await this.eventRepository.findOne({
       where: { id },
-      relations: ['organizer'],
+      relations: ['organizer', 'groupTickets'],
     });
     if (!event) throw new NotFoundException('Event not found');
     if (user.role !== 'admin') {
@@ -85,8 +113,32 @@ export class EventService {
         throw new ForbiddenException('Not allowed');
       }
     }
-    Object.assign(event, data);
+
+    // Update event data
+    Object.assign(event, eventData);
     const saved = await this.eventRepository.save(event);
+
+    // Handle group tickets if provided
+    if (groupTickets !== undefined) {
+      // Remove existing group tickets
+      if (event.groupTickets && event.groupTickets.length > 0) {
+        await this.groupTicketRepository.remove(event.groupTickets);
+      }
+
+      // Add new group tickets
+      if (Array.isArray(groupTickets) && groupTickets.length > 0) {
+        const groupTicketEntities = groupTickets.map((groupTicket) => {
+          return this.groupTicketRepository.create({
+            name: groupTicket.name,
+            memberCount: groupTicket.memberCount,
+            price: groupTicket.price,
+            event: saved,
+          });
+        });
+        await this.groupTicketRepository.save(groupTicketEntities);
+      }
+    }
+
     if (!saved.images) saved.images = [];
     return {
       ...saved,
@@ -94,6 +146,7 @@ export class EventService {
         id: event.organizer.id,
         role: event.organizer.role,
       },
+      groupTickets: groupTickets || event.groupTickets || [],
     };
   }
 
@@ -124,7 +177,7 @@ export class EventService {
   async getEvent(id: number): Promise<any> {
     const event = await this.eventRepository.findOne({
       where: { id },
-      relations: ['organizer'],
+      relations: ['organizer', 'groupTickets'],
     });
     if (!event) throw new NotFoundException('Event not found');
     if (!event.images) event.images = [];
@@ -133,13 +186,14 @@ export class EventService {
       organizer: event.organizer
         ? { id: event.organizer.id, role: event.organizer.role }
         : null,
+      groupTickets: event.groupTickets || [],
     };
   }
 
   async listActiveEvents(): Promise<any[]> {
     const events = await this.eventRepository.find({
       where: { status: EventStatus.ACTIVE },
-      relations: ['organizer'],
+      relations: ['organizer', 'groupTickets'],
     });
     return events.map((event) => ({
       ...event,
@@ -147,6 +201,7 @@ export class EventService {
       organizer: event.organizer
         ? { id: event.organizer.id, role: event.organizer.role }
         : null,
+      groupTickets: event.groupTickets || [],
     }));
   }
 
@@ -168,7 +223,7 @@ export class EventService {
   async getAllEventsForAdmin(): Promise<any[]> {
     const events = await this.eventRepository.find({
       relations: ['organizer'],
-      order: { createdAt: 'DESC' }
+      order: { createdAt: 'DESC' },
     });
 
     // Get ticket sales data for all events
@@ -197,7 +252,11 @@ export class EventService {
       ...event,
       images: event.images || [],
       organizer: event.organizer
-        ? { id: event.organizer.id, name: event.organizer.name, email: event.organizer.email }
+        ? {
+            id: event.organizer.id,
+            name: event.organizer.name,
+            email: event.organizer.email,
+          }
         : null,
       ticketsSold: eventSalesMap[event.id]?.ticketsSold || 0,
       revenue: eventSalesMap[event.id]?.revenue || 0,
@@ -214,17 +273,17 @@ export class EventService {
     recentEvents: any[];
   }> {
     const totalEvents = await this.eventRepository.count();
-    const activeEvents = await this.eventRepository.count({ 
-      where: { status: EventStatus.ACTIVE } 
+    const activeEvents = await this.eventRepository.count({
+      where: { status: EventStatus.ACTIVE },
     });
-    const pendingEvents = await this.eventRepository.count({ 
-      where: { status: EventStatus.PENDING } 
+    const pendingEvents = await this.eventRepository.count({
+      where: { status: EventStatus.PENDING },
     });
-    const archivedEvents = await this.eventRepository.count({ 
-      where: { status: EventStatus.ARCHIVED } 
+    const archivedEvents = await this.eventRepository.count({
+      where: { status: EventStatus.ARCHIVED },
     });
-    const featuredEvents = await this.eventRepository.count({ 
-      where: { isFeatured: true } 
+    const featuredEvents = await this.eventRepository.count({
+      where: { isFeatured: true },
     });
 
     // Calculate total revenue (this would need integration with ticket sales)
@@ -233,7 +292,7 @@ export class EventService {
     const recentEvents = await this.eventRepository.find({
       relations: ['organizer'],
       order: { createdAt: 'DESC' },
-      take: 10
+      take: 10,
     });
 
     return {
@@ -243,13 +302,13 @@ export class EventService {
       archivedEvents,
       featuredEvents,
       totalRevenue,
-      recentEvents: recentEvents.map(event => ({
+      recentEvents: recentEvents.map((event) => ({
         ...event,
         images: event.images || [],
-        organizer: event.organizer 
+        organizer: event.organizer
           ? { id: event.organizer.id, name: event.organizer.name }
-          : null
-      }))
+          : null,
+      })),
     };
   }
 
@@ -257,13 +316,17 @@ export class EventService {
     const events = await this.eventRepository.find({
       where: { status: EventStatus.PENDING },
       relations: ['organizer'],
-      order: { createdAt: 'ASC' }
+      order: { createdAt: 'ASC' },
     });
     return events.map((event) => ({
       ...event,
       images: event.images || [],
       organizer: event.organizer
-        ? { id: event.organizer.id, name: event.organizer.name, email: event.organizer.email }
+        ? {
+            id: event.organizer.id,
+            name: event.organizer.name,
+            email: event.organizer.email,
+          }
         : null,
     }));
   }
@@ -274,11 +337,11 @@ export class EventService {
       relations: ['organizer'],
     });
     if (!event) throw new NotFoundException('Event not found');
-    
+
     event.status = EventStatus.APPROVED;
     event.approvedBy = user.id;
     event.approvedAt = new Date();
-    
+
     return this.eventRepository.save(event);
   }
 
@@ -288,10 +351,10 @@ export class EventService {
       relations: ['organizer'],
     });
     if (!event) throw new NotFoundException('Event not found');
-    
+
     event.status = EventStatus.REJECTED;
     event.rejectionReason = reason;
-    
+
     return this.eventRepository.save(event);
   }
 
@@ -301,9 +364,9 @@ export class EventService {
       relations: ['organizer'],
     });
     if (!event) throw new NotFoundException('Event not found');
-    
+
     event.isFeatured = true;
-    
+
     return this.eventRepository.save(event);
   }
 
@@ -313,23 +376,26 @@ export class EventService {
       relations: ['organizer'],
     });
     if (!event) throw new NotFoundException('Event not found');
-    
+
     event.isFeatured = false;
-    
+
     return this.eventRepository.save(event);
   }
 
-  async deleteEventAsAdmin(id: number, user: any): Promise<{ message: string }> {
+  async deleteEventAsAdmin(
+    id: number,
+    user: any,
+  ): Promise<{ message: string }> {
     const event = await this.eventRepository.findOne({
       where: { id },
       relations: ['organizer'],
     });
     if (!event) throw new NotFoundException('Event not found');
-    
+
     // Soft delete by changing status
     event.status = EventStatus.DELETED;
     await this.eventRepository.save(event);
-    
+
     return { message: 'Event deleted successfully' };
   }
 }

@@ -46,6 +46,17 @@ export class TicketController {
     return this.ticketService.listTicketsForEvent(eventId, req.user);
   }
 
+  @Get('organizer/my')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('event_organizer')
+  async getMyTickets(@Request() req) {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new ForbiddenException('User ID not found');
+    }
+    return this.ticketService.getTicketsForOrganizer(Number(userId));
+  }
+
   @Post(':id/cancel')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'organizer')
@@ -104,7 +115,11 @@ export class TicketController {
     @Body() body: { status: TicketStatus },
     @Request() req,
   ) {
-    return await this.ticketService.updateTicketStatus(id, body.status, req.user);
+    return await this.ticketService.updateTicketStatus(
+      id,
+      body.status,
+      req.user,
+    );
   }
 
   @Get('admin/search')

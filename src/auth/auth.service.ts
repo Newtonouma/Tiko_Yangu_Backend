@@ -28,7 +28,7 @@ export class AuthService {
 
   async login(email: string, password: string, ipAddress?: string) {
     const user = await this.validateUser(email, password);
-    
+
     // Only allow admin and event_organizer roles to login
     if (
       user.role !== UserRole.ADMIN &&
@@ -38,7 +38,7 @@ export class AuthService {
         'Access denied. This system is restricted to event organizers and administrators.',
       );
     }
-    
+
     // Log successful login
     await this.auditService.logUserAction(
       AuditAction.LOGIN,
@@ -71,13 +71,18 @@ export class AuthService {
   }) {
     const existing = await this.userService.findByEmail(data.email);
     if (existing) throw new BadRequestException('Email already in use');
-    
+
     // Only allow admin and event_organizer roles for registration
     const allowedRole = data.role || UserRole.EVENT_ORGANIZER;
-    if (allowedRole !== UserRole.ADMIN && allowedRole !== UserRole.EVENT_ORGANIZER) {
-      throw new BadRequestException('Invalid role. Only admin and event_organizer roles are allowed.');
+    if (
+      allowedRole !== UserRole.ADMIN &&
+      allowedRole !== UserRole.EVENT_ORGANIZER
+    ) {
+      throw new BadRequestException(
+        'Invalid role. Only admin and event_organizer roles are allowed.',
+      );
     }
-    
+
     return this.userService.createUser({
       ...data,
       role: allowedRole,
