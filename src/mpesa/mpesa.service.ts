@@ -1,8 +1,10 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import axios from 'axios';
 
 @Injectable()
 export class MpesaService {
+  private readonly logger = new Logger(MpesaService.name);
+
   private consumerKey = process.env.MPESA_CONSUMER_KEY;
   private consumerSecret = process.env.MPESA_CONSUMER_SECRET;
   private shortcode = process.env.MPESA_SHORTCODE;
@@ -45,22 +47,43 @@ export class MpesaService {
     const password = Buffer.from(
       `${this.shortcode}${this.passkey}${timestamp}`,
     ).toString('base64');
+
+    // Resolve callback URL at call time (not only at module init)
+    const rawCallback = process.env.MPESA_CALLBACK_URL || this.callbackUrl || '';
+    const callbackUrl = rawCallback.replace(/\/$/, '');
+
+    // Build request body
+    const body = {
+      BusinessShortCode: this.shortcode,
+      Password: password,
+      Timestamp: timestamp,
+      TransactionType: 'CustomerPayBillOnline' as const,
+      Amount: amount,
+      PartyA: phone,
+      PartyB: this.shortcode,
+      PhoneNumber: phone,
+      CallBackURL: callbackUrl,
+      AccountReference: accountReference,
+      TransactionDesc: transactionDesc,
+    };
+
+    // Log sanitized payload (mask sensitive fields)
+    try {
+      const masked = {
+        ...body,
+        Password: '***MASKED***',
+        PartyA: phone?.replace(/^(\+?\d{3})\d+(\d{2})$/, '$1******$2') || phone,
+        PhoneNumber: phone?.replace(/^(\+?\d{3})\d+(\d{2})$/, '$1******$2') || phone,
+      };
+      this.logger.log(`STK Push endpoint: https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest`);
+      this.logger.log(`STK Push payload: ${JSON.stringify(masked)}`);
+      this.logger.log(`Callback URL: ${callbackUrl}`);
+    } catch {}
+
     try {
       const res = await axios.post(
         'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
-        {
-          BusinessShortCode: this.shortcode,
-          Password: password,
-          Timestamp: timestamp,
-          TransactionType: 'CustomerPayBillOnline',
-          Amount: amount,
-          PartyA: phone,
-          PartyB: this.shortcode,
-          PhoneNumber: phone,
-          CallBackURL: this.callbackUrl,
-          AccountReference: accountReference,
-          TransactionDesc: transactionDesc,
-        },
+        body,
         {
           headers: { Authorization: `Bearer ${accessToken}` },
         },
@@ -68,6 +91,7 @@ export class MpesaService {
       return res.data;
     } catch (error) {
       if (error.response) {
+        this.logger.error(`STK Push error response: ${JSON.stringify(error.response.data)}`);
         throw new HttpException(
           {
             message: 'M-Pesa STK Push failed',
@@ -76,6 +100,7 @@ export class MpesaService {
           HttpStatus.BAD_GATEWAY,
         );
       } else {
+        this.logger.error(`STK Push network error: ${error?.message || error}`);
         throw new HttpException(
           'M-Pesa STK Push failed',
           HttpStatus.BAD_GATEWAY,

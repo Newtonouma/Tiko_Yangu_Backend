@@ -11,6 +11,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { SettingsModule } from './settings/settings.module';
 import { AuditModule } from './audit/audit.module';
 import { MarketingModule } from './marketing/marketing.module';
+import { MpesaModule } from './mpesa/mpesa.module';
 
 @Module({
   imports: [
@@ -23,7 +24,9 @@ import { MarketingModule } from './marketing/marketing.module';
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
       autoLoadEntities: true,
-      synchronize: true, // Set to false in production
+      synchronize: process.env.NODE_ENV !== 'production', // Disabled in production for performance
+      logging: process.env.NODE_ENV !== 'production',
+      poolSize: 10,
     }),
     UserModule,
     AuthModule,
@@ -33,6 +36,7 @@ import { MarketingModule } from './marketing/marketing.module';
     SettingsModule,
     AuditModule,
     MarketingModule,
+    MpesaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

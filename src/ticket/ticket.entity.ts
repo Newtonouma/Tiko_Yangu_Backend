@@ -9,6 +9,7 @@ import {
 import { Event } from '../event/event.entity';
 
 export enum TicketStatus {
+  PENDING = 'pending',
   VALID = 'valid',
   USED = 'used',
   CANCELED = 'canceled',
@@ -38,11 +39,21 @@ export class Ticket {
   @Column('decimal')
   price: number;
 
-  @Column({ type: 'enum', enum: TicketStatus, default: TicketStatus.VALID })
+  @Column({ type: 'enum', enum: TicketStatus, default: TicketStatus.PENDING })
   status: TicketStatus;
 
   @Column()
   qrCode: string;
+
+  // Payment linkage fields
+  @Column({ nullable: true })
+  paymentProvider?: string; // e.g., 'mpesa'
+
+  @Column({ nullable: true })
+  mpesaMerchantRequestId?: string;
+
+  @Column({ nullable: true })
+  mpesaCheckoutRequestId?: string;
 
   // Admin fields
   @Column({ nullable: true })

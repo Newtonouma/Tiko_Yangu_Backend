@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Ticket } from './ticket.entity';
 import { Event } from '../event/event.entity';
@@ -13,7 +13,7 @@ import { MpesaModule } from '../mpesa/mpesa.module';
     TypeOrmModule.forFeature([Ticket, Event]),
     NotificationModule,
     AuthModule,
-    MpesaModule,
+    forwardRef(() => MpesaModule),
   ],
   providers: [TicketService],
   controllers: [TicketController],

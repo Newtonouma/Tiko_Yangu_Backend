@@ -12,6 +12,7 @@ import { Event } from '../event/event.entity';
 import { v4 as uuidv4 } from 'uuid';
 import { EmailService } from '../notification/email.service';
 import { SmsService } from '../notification/sms.service';
+import { PdfTicketService } from '../notification/pdf-ticket.service';
 import { MpesaService } from '../mpesa/mpesa.service';
 
 @Injectable()
@@ -25,6 +26,7 @@ export class TicketService {
     private readonly eventRepository: Repository<Event>,
     private readonly emailService: EmailService,
     private readonly smsService: SmsService,
+    private readonly pdfTicketService: PdfTicketService,
     private readonly mpesaService: MpesaService,
   ) {}
 
@@ -59,40 +61,21 @@ export class TicketService {
       accountReference: event.title || 'Ticket',
       transactionDesc: `Ticket for ${event.title}`,
     });
-    // For now, save as VALID (or you can add a new status if you want to track pending payments)
+
+    // Save ticket as PENDING and link to payment identifiers
     const ticket = this.ticketRepository.create({
       ...data,
       price,
       event: event,
       qrCode: uuidv4(),
-      status: TicketStatus.VALID,
+      status: TicketStatus.PENDING,
+      paymentProvider: 'mpesa',
+      mpesaMerchantRequestId: (mpesaRes && mpesaRes.MerchantRequestID) || null,
+      mpesaCheckoutRequestId: (mpesaRes && mpesaRes.CheckoutRequestID) || null,
     });
     const savedTicket = await this.ticketRepository.save(ticket);
 
-    // Send ticket confirmation notifications
-    try {
-      if (savedTicket.buyerEmail) {
-        await this.emailService.sendTicketConfirmation(
-          savedTicket.buyerEmail,
-          event.title,
-          savedTicket.id,
-        );
-      }
-
-      if (savedTicket.buyerPhone) {
-        await this.smsService.sendTicketConfirmation(
-          savedTicket.buyerPhone,
-          event.title,
-          savedTicket.id,
-        );
-      }
-    } catch (notificationError) {
-      this.logger.error(
-        `Failed to send ticket confirmation: ${notificationError.message}`,
-      );
-      // Don't fail the ticket purchase if notifications fail
-    }
-
+    // Do NOT send confirmations here; wait for payment callback
     return {
       ticket: savedTicket,
       mpesa: mpesaRes,
@@ -207,6 +190,86 @@ export class TicketService {
       throw new ForbiddenException('Not allowed');
     ticket.status = TicketStatus.USED;
     return this.ticketRepository.save(ticket);
+  }
+
+  // Called by payment callbacks to finalize a ticket
+  async finalizePaymentByCheckoutId(
+    checkoutRequestId: string,
+    success: boolean,
+    extra?: any,
+  ): Promise<Ticket | null> {
+    if (!checkoutRequestId) return null;
+    const ticket = await this.ticketRepository.findOne({
+      where: { mpesaCheckoutRequestId: checkoutRequestId },
+      relations: ['event'],
+    });
+    if (!ticket) return null;
+
+    if (success) {
+      ticket.status = TicketStatus.VALID;
+      await this.ticketRepository.save(ticket);
+      // Send ticket confirmation notifications
+      try {
+        // Generate PDF ticket
+        let pdfBuffer: Buffer | undefined;
+        if (ticket.event) {
+          pdfBuffer = await this.pdfTicketService.generateTicketPdf({
+            ticketId: ticket.id,
+            qrCode: ticket.qrCode,
+            buyerName: ticket.buyerName,
+            buyerEmail: ticket.buyerEmail,
+            buyerPhone: ticket.buyerPhone,
+            eventTitle: ticket.event.title,
+            eventVenue: ticket.event.venue,
+            eventLocation: ticket.event.location,
+            eventStartDate: ticket.event.startDate,
+            eventStartTime: ticket.event.startTime,
+            eventEndDate: ticket.event.endDate,
+            eventEndTime: ticket.event.endTime,
+            ticketType: ticket.ticketType,
+            price: Number(ticket.price),
+          });
+        }
+
+        if (ticket.buyerEmail) {
+          await this.emailService.sendTicketConfirmation(
+            ticket.buyerEmail,
+            ticket.event?.title || 'Your Event',
+            ticket.id,
+            pdfBuffer,
+            ticket.event
+              ? {
+                  venue: ticket.event.venue,
+                  location: ticket.event.location,
+                  startDate: ticket.event.startDate,
+                  startTime: ticket.event.startTime,
+                  endDate: ticket.event.endDate,
+                  endTime: ticket.event.endTime,
+                  ticketType: ticket.ticketType,
+                  price: Number(ticket.price),
+                  buyerName: ticket.buyerName,
+                }
+              : undefined,
+          );
+        }
+        if (ticket.buyerPhone) {
+          await this.smsService.sendTicketConfirmation(
+            ticket.buyerPhone,
+            ticket.event?.title || 'Your Event',
+            ticket.id,
+          );
+        }
+      } catch (notificationError) {
+        this.logger.error(
+          `Failed to send ticket confirmation after payment: ${notificationError instanceof Error ? notificationError.message : notificationError}`,
+        );
+      }
+    } else {
+      ticket.status = TicketStatus.CANCELED;
+      await this.ticketRepository.save(ticket);
+    }
+
+    return ticket;
   }
 
   // Admin-specific methods

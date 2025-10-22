@@ -79,6 +79,18 @@ export class EmailService {
     to: string,
     eventName: string,
     ticketId: number,
+    ticketPdfBuffer?: Buffer,
+    eventDetails?: {
+      venue: string;
+      location: string;
+      startDate: string;
+      startTime: string;
+      endDate: string;
+      endTime: string;
+      ticketType: string;
+      price: number;
+      buyerName: string;
+    },
   ) {
     const emailEnabled = await this.isEmailEnabled();
     if (!emailEnabled) {
@@ -86,23 +98,75 @@ export class EmailService {
       return;
     }
     try {
-      const subject = `Your Ticket for ${eventName}`;
+      const subject = `Your Ticket for ${eventName} - Ticket #${ticketId}`;
+      const appUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+
+      // Build event details HTML
+      let eventDetailsHtml = '';
+      if (eventDetails) {
+        const dateStr = new Date(eventDetails.startDate).toLocaleDateString(
+          'en-US',
+          { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' },
+        );
+        eventDetailsHtml = `
+          <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin:24px 0;">
+            <h3 style="margin:0 0 16px 0;color:#111827;font-size:18px;">Event Details</h3>
+            <table style="width:100%;border-collapse:collapse;">
+              <tr><td style="padding:6px 0;color:#6b7280;font-size:14px;"><strong>Event:</strong></td><td style="padding:6px 0;color:#111827;font-size:14px;">${eventName}</td></tr>
+              <tr><td style="padding:6px 0;color:#6b7280;font-size:14px;"><strong>Venue:</strong></td><td style="padding:6px 0;color:#111827;font-size:14px;">${eventDetails.venue}, ${eventDetails.location}</td></tr>
+              <tr><td style="padding:6px 0;color:#6b7280;font-size:14px;"><strong>Date:</strong></td><td style="padding:6px 0;color:#111827;font-size:14px;">${dateStr}</td></tr>
+              <tr><td style="padding:6px 0;color:#6b7280;font-size:14px;"><strong>Time:</strong></td><td style="padding:6px 0;color:#111827;font-size:14px;">${eventDetails.startTime} - ${eventDetails.endTime}</td></tr>
+              <tr><td style="padding:6px 0;color:#6b7280;font-size:14px;"><strong>Ticket Type:</strong></td><td style="padding:6px 0;color:#111827;font-size:14px;">${eventDetails.ticketType}</td></tr>
+              <tr><td style="padding:6px 0;color:#6b7280;font-size:14px;"><strong>Price:</strong></td><td style="padding:6px 0;color:#111827;font-size:14px;">KES ${eventDetails.price.toLocaleString()}</td></tr>
+              <tr><td style="padding:6px 0;color:#6b7280;font-size:14px;"><strong>Attendee:</strong></td><td style="padding:6px 0;color:#111827;font-size:14px;">${eventDetails.buyerName}</td></tr>
+            </table>
+          </div>
+        `;
+      }
+
       const htmlBody = this.wrapHtml(
         subject,
         `
-          <p>Thank you for purchasing a ticket!</p>
-          <p>Your ticket ID is <strong>${ticketId}</strong>.</p>
-          <p>Event: <strong>${eventName}</strong></p>
+          <h2 style="color:#111827;margin:0 0 16px 0;">🎉 Your Ticket is Confirmed!</h2>
+          <p style="color:#374151;line-height:1.6;margin:0 0 16px 0;">Hi <strong>${eventDetails?.buyerName || 'there'}</strong>,</p>
+          <p style="color:#374151;line-height:1.6;margin:0 0 16px 0;">Thank you for purchasing your ticket! Your payment has been confirmed and your ticket is attached as a PDF.</p>
+          ${eventDetailsHtml}
+          <div style="background:#dbeafe;border-left:4px solid #2563eb;padding:16px;margin:24px 0;border-radius:4px;">
+            <p style="margin:0;color:#1e40af;font-size:14px;"><strong>📎 Your ticket is attached</strong> — Please download and save it. You'll need to present it at the venue entrance.</p>
+          </div>
+          <div style="margin:32px 0;text-align:center;">
+            <a href="${appUrl}/events" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:15px;">Browse More Events</a>
+          </div>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:32px 0;" />
+          <div style="background:#f9fafb;padding:20px;border-radius:8px;text-align:center;margin:24px 0;">
+            <h3 style="margin:0 0 12px 0;color:#111827;font-size:16px;">Host Your Own Event</h3>
+            <p style="color:#6b7280;font-size:14px;line-height:1.5;margin:0 0 16px 0;">Create and manage events with Tikoyangu's powerful platform. Reach thousands of attendees.</p>
+            <a href="${appUrl}/register" style="display:inline-block;background:#059669;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:600;font-size:14px;">Create Your Event</a>
+          </div>
         `,
       );
-      await this.transporter.sendMail({
+
+      const mailOptions: any = {
         from: this.fromAddress(),
         to,
         subject,
-        text: `Thank you for purchasing a ticket! Your ticket ID is ${ticketId}. Event: ${eventName}`,
+        text: `Thank you for purchasing your ticket for ${eventName}! Your ticket ID is ${ticketId}. Please find your ticket attached as a PDF.`,
         html: htmlBody,
-      });
-      this.logger.log(`Confirmation email sent to ${to}`);
+      };
+
+      // Attach PDF if provided
+      if (ticketPdfBuffer) {
+        mailOptions.attachments = [
+          {
+            filename: `ticket-${ticketId}.pdf`,
+            content: ticketPdfBuffer,
+            contentType: 'application/pdf',
+          },
+        ];
+      }
+
+      await this.transporter.sendMail(mailOptions);
+      this.logger.log(`Confirmation email with PDF sent to ${to}`);
     } catch (error: any) {
       this.logger.error(`Failed to send email: ${error?.message || error}`);
     }

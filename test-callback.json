@@ -1,0 +1,17 @@
+{
+  "Body": {
+    "stkCallback": {
+      "MerchantRequestID": "test-merchant",
+      "CheckoutRequestID": "test-checkout",
+      "ResultCode": 0,
+      "ResultDesc": "Success",
+      "CallbackMetadata": {
+        "Item": [
+          { "Name": "Amount", "Value": 1 },
+          { "Name": "MpesaReceiptNumber", "Value": "TEST123" },
+          { "Name": "PhoneNumber", "Value": "254700000000" }
+        ]
+      }
+    }
+  }
+}
